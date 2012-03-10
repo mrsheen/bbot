@@ -196,7 +196,7 @@ namespace BBot
             int xConfDeltaCount = 0;
             int yConfDeltaCount = 0;
             int xSearchBreak = 8;
-            int ySearchBreak = 8;
+            int ySearchBreak = 12;
 
 
 

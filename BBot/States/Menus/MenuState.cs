@@ -15,9 +15,10 @@ namespace BBot.States
 
         }
 
-        public override void Init(GameEngine gameRef)
+        public override void Start()
         {
-            base.Init(gameRef);
+            base.Start();
+
 
             clickX = game.GameExtentsOnScreen.Value.X + 340;
             clickY = game.GameExtentsOnScreen.Value.Y + 190;

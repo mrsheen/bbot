@@ -315,14 +315,14 @@ namespace BBot
                 
                 states.TryGetValue(item.Text, out selectedState);
 
-                
-                if (startGameThread == null || startGameThread.ThreadState == ThreadState.Stopped)
-                    startGameThread = new Thread(new ThreadStart(StartGame));
+                StartGame();
+                //if (startGameThread == null || startGameThread.ThreadState == ThreadState.Stopped)
+                //    startGameThread = new Thread(new ThreadStart(StartGame));
 
-                if (startGameThread.IsAlive)
-                    return;
+                //if (startGameThread.IsAlive)
+                //    return;
 
-                startGameThread.Start();
+                //startGameThread.Start();
 
             }
             catch (Exception)

@@ -45,6 +45,8 @@ namespace BBot.States
                 FindStateFromScreen(true);
             bStarted = true;
             bStarting = false;
+            if (!game.GameExtentsOnScreen.HasValue)
+                throw new ApplicationException("Game state not found in screen");
         }
 
         public virtual void Cleanup() { }
@@ -187,26 +189,29 @@ namespace BBot.States
         private Bitmap GetBitmapByType(StateBitmapType bitmapType, Size? size = null, PixelFormat? format = null)
         {
             Bitmap rootBitmap = null;
-
-            String resourceName = String.Format("BBot.Assets.{0}.bmp", this.AssetName);
-            
+            string assetName = String.Empty;
+            AForge.Imaging.Filters.Add addFilter;
             try
             {
-                // Get area to find
-                rootBitmap = (Bitmap)System.Drawing.Bitmap.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName));
-                rootBitmap = rootBitmap.Clone(
-                    new Rectangle(0, 0,
-                        size.HasValue ? size.Value.Width : rootBitmap.Width,
-                        size.HasValue ? size.Value.Height : rootBitmap.Height),
-                    format.HasValue ? format.Value : rootBitmap.PixelFormat);
 
+                // Get area to find
+                rootBitmap = GetBitmap(this.AssetName, size, format);
+
+                // Add given masks
                 switch (bitmapType)
                 {
-                    case StateBitmapType.Mask:
-                    case StateBitmapType.Blue:                        
                     case StateBitmapType.SmartMask:
-                        AForge.Imaging.Filters.Add addFilter = new AForge.Imaging.Filters.Add(GetBackgroundBitmap(size, format));
+                        assetName = "wholegame.background";
+                        addFilter = new AForge.Imaging.Filters.Add(GetBitmap(assetName, size, format));
                         addFilter.ApplyInPlace(rootBitmap);
+                        goto case StateBitmapType.Mask; // farking c#: http://stackoverflow.com/a/174223
+                    case StateBitmapType.Blue:
+                    case StateBitmapType.Mask:
+                        // Get area to find
+                        assetName = String.Format("{0}.mask", this.AssetName);
+                        addFilter = new AForge.Imaging.Filters.Add(GetBitmap(assetName, size, format));
+                        addFilter.ApplyInPlace(rootBitmap);
+
                         break;
                     case StateBitmapType.RawImage:
                     default:
@@ -214,13 +219,22 @@ namespace BBot.States
                 }
 
             }
+            catch (OutOfMemoryException)
+            {
+                // Bitmap sizes must be different trying to clone
+                Bitmap filterBitmap = (Bitmap)System.Drawing.Bitmap.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream(String.Format("BBot.Assets.{0}.bmp", assetName)));
+                Rectangle rectFailed = new Rectangle(0, 0,
+                        size.HasValue ? size.Value.Width : filterBitmap.Width,
+                        size.HasValue ? size.Value.Height : filterBitmap.Height);
+
+            }
             catch (Exception) { }
             return rootBitmap;
         }
 
-        private Bitmap GetBackgroundBitmap(Size? size, PixelFormat? format)
+        private Bitmap GetBitmap(string assetName, Size? size, PixelFormat? format)
         {
-            Bitmap filterBitmap = (Bitmap)System.Drawing.Bitmap.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("BBot.Assets.wholegame.background.bmp"));
+            Bitmap filterBitmap = (Bitmap)System.Drawing.Bitmap.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream(String.Format("BBot.Assets.{0}.bmp", assetName)));
             filterBitmap = filterBitmap.Clone(
                 new Rectangle(0, 0,
                     size.HasValue ? size.Value.Width : filterBitmap.Width,

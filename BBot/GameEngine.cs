@@ -139,6 +139,7 @@ namespace BBot
     {
         private Stack<BaseGameState> states;
         private Thread UpdateThread;
+        private Thread StartThread;
         
 
         private GameEngine game;
@@ -157,6 +158,13 @@ namespace BBot
                 UpdateThread.Abort();
                 UpdateThread = null;
             }
+
+            if (StartThread != null)
+            {
+                StartThread.Abort();
+                StartThread = null;
+            }
+
 
             while (states.Count > 0)
                 states.Pop().Cleanup();
@@ -212,7 +220,15 @@ namespace BBot
 
             try
             {
-                states.Peek().Start();
+                if (StartThread == null || StartThread.ThreadState == ThreadState.Stopped)
+                    StartThread = new Thread(new ThreadStart(StartState));
+
+                if (StartThread.IsAlive)
+                    throw new ApplicationException("BaseGameState.Start() already requested");
+
+
+                StartThread.Start();
+                //states.Peek().Start();
             }
             catch (Exception)
             {
@@ -221,6 +237,16 @@ namespace BBot
 
 
             return states.Peek().HandleEvents();
+        }
+
+        private void StartState()
+        {
+            try
+            {
+                if (states.Count > 0)
+                    states.Peek().Start();
+            }
+            catch (Exception) { }
         }
 
         public void Update()
