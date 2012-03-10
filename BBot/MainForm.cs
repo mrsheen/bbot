@@ -22,60 +22,36 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Text;
+
 using System.Windows.Forms;
-using System.Runtime.InteropServices;
-using System.Threading;
+using System;
+using System.Drawing;
 using System.Configuration;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
+using BBot.States;
 
 namespace BBot
 {
     public partial class MainForm : Form
     {
-        private Bitmap capturedArea; // Holds the captured area bitmap for each iteration
+        GameEngine gameEngine;
 
-        private static Size size = new Size(320, 320); // The size of the Bejeweled gem grid
-        private const int cellSize = 40; // Size of each cell in the grid
-
-        // When we sample a pixel from within a cell we'll offset it by these amounts
-        // Add roughly half a cell X and Y so we get the centre of the gem (ish)
-        // Just changing the top coordinate got me my first million point game...
-        // It seems to match colours better in that part of the gem
-        private const int topOffset = 18;
-        private const int leftOffset = 18;
-
-        private static Color[,] grid = new Color[8, 8]; // Matrix to hold the colour present in each grid cell
-
-        private Point origin; // 
-        private Point startPoint;
-
-        private bool debugMode = false;
-
-        private System.Windows.Forms.Timer tMove = new System.Windows.Forms.Timer(); // Timer that performs the moves
-        private System.Windows.Forms.Timer tDuration = new System.Windows.Forms.Timer(); // Timer that stops the loop after a certain duration
+        private System.Windows.Forms.Timer tUpdateDisplay = new System.Windows.Forms.Timer(); // Timer that performs the moves
 
         public MainForm()
         {
             InitializeComponent();
-
-            debugMode = Convert.ToBoolean(ConfigurationManager.AppSettings["DebugMode"]);
+            GenerateContextOptions();
 
             // Set up the timer that performs the moves
-            tMove.Tick += new EventHandler(tMove_Tick);
-            tMove.Interval = 125; // Perform a move every N milliseconds
-            tMove.Enabled = true;
-            tMove.Stop();
+            tUpdateDisplay.Tick += new EventHandler(UpdateDisplay_tick);
+            tUpdateDisplay.Interval = 1000; // Perform a move every N milliseconds
+            tUpdateDisplay.Enabled = true;
+            tUpdateDisplay.Stop();
 
-            // This is the timer that stops the loop after a certain duration
-            tDuration.Tick += new EventHandler(tDuration_Tick);
-            tDuration.Enabled = true;
-            tDuration.Stop();
+
 
             // Shift-Ctrl-Alt Escape will exit the play loop
             WIN32.RegisterHotKey(Handle, 100, WIN32.KeyModifiers.Control | WIN32.KeyModifiers.Alt | WIN32.KeyModifiers.Shift, Keys.Escape);
@@ -83,19 +59,141 @@ namespace BBot
             this.FormClosing += new FormClosingEventHandler(Form1_FormClosing);
 
             // Put the window at top right
-            this.Location = new Point(Screen.PrimaryScreen.Bounds.Width - this.Width, 0);
+            this.Location = new Point(Screen.PrimaryScreen.Bounds.Width + 20, 0);
 
             // Initially set the preview image
-            this.preview.Image = Image.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("BBot.Assets.Instruction.bmp"));
+            //this.preview.Image = Image.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("BBot.Assets.Instruction.bmp"));
+            ckbDebug.Checked = Convert.ToBoolean(ConfigurationManager.AppSettings["DebugMode"]);
 
-            if (debugMode)
-                this.Height = 734;
+            //InitGameEngine(); // Start manually
+
         }
+
+        private void InitGameEngine()
+        {
+            DebugMessage("Starting game engine");
+            gameEngine = new GameEngine(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
+
+            //System.IO.Directory.CreateDirectory(workingPath);
+
+            gameEngine.DebugEvent += new GameEngine.DebugDelegate(DebugMessage);
+            FindBitmap.ImageSearchEvent += new FindBitmap.ImageSearchDelegate(ImageSearch);
+
+            playButton.Enabled = true;
+
+            tUpdateDisplay.Start();
+        }
+
+        private void KillGameEngine()
+        {
+            tUpdateDisplay.Stop();
+
+            if (startGameThread != null)
+            {
+                startGameThread.Abort();
+                startGameThread= null;
+            }
+
+            if (gameEngine != null)
+                gameEngine.Cleanup();
+
+            gameEngine = null;
+
+            playButton.Enabled = false;
+        }
+
+        private void UpdateDisplay_tick(object sender, EventArgs e)
+        {
+            //lock (gameEngine.GameScreen)
+            //{
+            //    //preview.Image = gameEngine.GameScreen.Clone(new Rectangle(0, 0, gameEngine.GameScreen.Width, gameEngine.GameScreen.Height), gameEngine.GameScreen.PixelFormat);
+            //}
+        }
+
+        private void DebugMessage(string debugMessage)
+        {
+            if (debugConsole.InvokeRequired)
+            {
+                debugConsole.Invoke(new MethodInvoker(() => { DebugMessage(debugMessage); }));
+
+            }
+            else
+            {
+
+                debugConsole.AppendText(String.Format("{0} - {1}", DateTime.Now, debugMessage) + Environment.NewLine);
+                debugConsole.ScrollToCaret();
+            }
+        }
+
+        private void ImageSearch(FindBitmap.ImageSearchDetails details)
+        {
+            plotValue(details);
+        }
+
+        private Dictionary<FindBitmap.ImageSearchDetailsType, int> counts = new Dictionary<FindBitmap.ImageSearchDetailsType, int>();
+        private void plotValue(FindBitmap.ImageSearchDetails details)
+        {
+            if (pictureBox1.InvokeRequired)
+            {
+                pictureBox1.Invoke(new MethodInvoker(() => { plotValue(details); }));
+
+            }
+            else
+            {
+                if (!counts.ContainsKey(details.type))
+                    counts.Add(details.type, 0);
+
+                using (Graphics g = Graphics.FromHwnd(pictureBox1.Handle))
+                {
+                    SolidBrush brush = new SolidBrush(Color.White);
+                    if (details.type.Equals(FindBitmap.ImageSearchDetailsType.MatchCertainty))
+                        g.FillRectangle(brush, new Rectangle(counts[details.type] - 1, 0, 5, pictureBox1.Height));
+
+                    brush.Color = GetColor(details);
+                    g.FillRectangle(brush, new Rectangle(counts[details.type] - 1, pictureBox1.Height - GetAdjustedValue(details.currentValue) - 1, 2, 2));
+
+                    brush.Color = Color.Red;
+                    g.FillRectangle(brush, new Rectangle(counts[details.type] - 1, pictureBox1.Height - GetAdjustedValue(details.thresholdValue), 1, 1));
+
+                }
+
+                counts[details.type]++;
+
+                if (counts[details.type] > pictureBox1.Width)
+                {
+                    counts[details.type] = 0;
+                }
+            }
+
+        }
+
+        private int GetAdjustedValue(double currentValue)
+        {
+            return (int)(currentValue * pictureBox1.Height / 100D);
+        }
+
+        private Color GetColor(FindBitmap.ImageSearchDetails details)
+        {
+            switch (details.type)
+            {
+                case FindBitmap.ImageSearchDetailsType.CertaintyDelta:
+                    return Color.Orange;
+
+                case FindBitmap.ImageSearchDetailsType.MatchCertainty:
+                    return Color.LimeGreen;
+
+                default:
+                    return Color.Blue;
+            }
+        }
+
+
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             // Kill the system-wide hotkey on app exit
             WIN32.UnregisterHotKey(Handle, 100);
+            KillGameEngine();
         }
 
         // Set up hotkeys: we need one to be able to quit the loop because 
@@ -107,435 +205,130 @@ namespace BBot
             switch (m.Msg)
             {
                 case WM_HOTKEY:
-                    tMove.Stop();
-                    tDuration.Stop();
+                    KillGameEngine();
                     break;
             }
 
             base.WndProc(ref m);
         }
 
-        // Stop the play loop automatically at the end of the specified duration
-        private void tDuration_Tick(object sender, EventArgs e)
-        {
-            tMove.Stop();
-            tDuration.Stop();
-        }
-
-        // This gets fired every N seconds in order to perform moves
-        private void tMove_Tick(object sender, EventArgs e)
-        {
-            CaptureArea();
-            ScanGrid(false);
-            DoMoves();
-        }
-
-        // Capture the specified screen area which we set up earlier
-        private void CaptureArea()
-        {
-            using (Graphics graphics = Graphics.FromImage(capturedArea))
-            {
-                graphics.CopyFromScreen(origin.X, origin.Y, 0, 0, size);
-            }
-        }
-
-        // Check if two colours match
-        private bool MatchColours(Color a, Color b)
-        {
-            return (a.ToArgb().ToString() == b.ToArgb().ToString());
-
-            // TODO: Sort this out so that we match special gem colours by range
-            /*
-            // White
-            if (a.R > 230 && a.G > 230 && a.B > 230)
-                return (b.R > 230 && b.G > 230 && b.B > 230);
-
-            // Yellow
-            if (a.R > 230 && a.G > 180 && a.B < 100)
-                return (b.R > 230 && b.G > 180 && b.B < 100);
-
-            // Orange
-            if (a.R > 230 && a.G > 230 && a.B > 100)
-                return (b.R > 230 && b.G > 230 && b.B > 100);
-
-            // Purple
-            if (a.R > 230 && a.B > 230)
-                return (b.R > 230 && b.B > 230);
-
-            // Red
-            if (a.R > 230)
-                return (b.R > 230);
-
-            // Green
-            if (a.G > 230)
-                return (b.G > 230);
-
-            // Blue
-            if (a.B > 230)
-                return (b.B > 230);
-
-            return false;
-            */
-        }
-
-        // 
-        // Code adapted from William Henry's Java bot: http://mytopcoder.com/bejeweledBot
-        // TODO: I did this the easy way by always moving the cell we are currently looking at (just to get the app running), but this isn't the most efficient method
-        private void DoMoves()
-        {
-            var s = startPoint;
-
-            // Across
-            for (int y = 0; y < 8; y++)
-            {
-                // Down
-                for (int x = 0; x < 8; x++)
-                {
-                    // x
-                    // -
-                    // x
-                    // x
-
-                    if (y + 3 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x, y + 2]) && MatchColours(grid[x, y + 2], grid[x, y + 3]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * y));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * (y + 1)));
-                            Mouse.Release();
-                        }
-                    }
-
-                    // - x
-                    // x
-                    // x
-
-                    if (x > 0 && y + 2 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x - 1, y + 1]) && MatchColours(grid[x - 1, y + 1], grid[x - 1, y + 2]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * y));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * (x - 1)), s.Y + (cellSize * y));
-                            Mouse.Release();
-                        }
-                    }
-                   
-                    // x
-                    // - x
-                    // x
-
-                    if (x + 1 < 8 && y + 2 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x + 1, y + 1]) && MatchColours(grid[x + 1, y + 1], grid[x, y + 2]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * (x + 1)), s.Y + (cellSize * (y + 1)));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * (x - 1)), s.Y + (cellSize * (y + 1)));
-                            Mouse.Release();
-                        }
-                    }
-
-                    // x
-                    // x
-                    // - x
-
-                    if (x + 1 < 8 && y + 2 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x, y + 1]) && MatchColours(grid[x, y + 1], grid[x + 1, y + 2]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * (x + 1)), s.Y + (cellSize * (y + 2)));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * (x - 1)), s.Y + (cellSize * (y + 2)));
-                            Mouse.Release();
-                        }
-                    }
-
-                    // x
-                    // x
-                    // -
-                    // x
-
-                    if (y + 3 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x, y + 1]) && MatchColours(grid[x, y + 1], grid[x, y + 3]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * (y + 3)));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * (y + 2)));
-                            Mouse.Release();
-                        }
-                    }
-
-                    // x -
-                    //   x
-                    //   x
-
-                    if (x + 1 < 8 && y + 2 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x + 1, y + 1]) && MatchColours(grid[x + 1, y + 1], grid[x + 1, y + 2]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * y));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * (x + 1)), s.Y + (cellSize * y));
-                            Mouse.Release();
-                        }
-                    }
-
-                    //   x
-                    // x -
-                    //   x
-
-                    if (x > 0 && y + 2 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x - 1, y + 1]) && MatchColours(grid[x - 1, y + 1], grid[x, y + 2]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * (x - 1)), s.Y + (cellSize * (y + 1)));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * (x + 1)), s.Y + (cellSize * (y + 1)));
-                            Mouse.Release();
-                        }
-                    }
-
-                    //   x
-                    //   x
-                    // x -
-
-                    if (x > 0 && y + 2 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x, y + 1]) && MatchColours(grid[x, y + 1], grid[x - 1, y + 2]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * (x - 1)), s.Y + (cellSize * (y + 2)));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * (y + 2)));
-                            Mouse.Release();
-                        }
-                    }
-
-                    // xx-x
-
-                    if (x + 3 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x + 1, y]) && MatchColours(grid[x + 1, y], grid[x + 3, y]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * (x + 3)), s.Y + (cellSize * y));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * (x + 2)), s.Y + (cellSize * y));
-                            Mouse.Release();
-                        }
-                    }
-
-                    // x--
-                    // -xx
-
-                    if (x + 2 < 8 && y + 1 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x + 1, y + 1]) && MatchColours(grid[x + 1, y + 1], grid[x + 2, y + 1]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * y));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * (y + 1)));
-                            Mouse.Release();
-                        }
-                    }
-
-                    // -x-
-                    // x-x
-
-                    if (x - 1 > 0 && x + 1 < 8 && y + 1 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x + 1, y + 1]) && MatchColours(grid[x + 1, y + 1], grid[x - 1, y + 1]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * y));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * (y + 1)));
-                            Mouse.Release();
-                        }
-                    }
-
-                    // --x
-                    // xx-
-
-                    if (x - 2 > 0 && y + 1 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x - 1, y + 1]) && MatchColours(grid[x - 1, y + 1], grid[x - 2, y + 1]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * y));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * (y + 1)));
-                            Mouse.Release();
-                        }
-                    }
-
-                    // x-xx
-
-                    if (x + 3 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x + 2, y]) && MatchColours(grid[x + 2, y], grid[x + 3, y]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * x), s.Y + (cellSize * y));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * (x + 1)), s.Y + (cellSize * y));
-                            Mouse.Release();
-                        }
-                    }
-
-                    // -xx
-                    // x--
-
-                    if (x - 1 > 0 && x + 1 < 8 && y + 1 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x + 1, y]) && MatchColours(grid[x + 1, y], grid[x - 1, y + 1]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * (x - 1)), s.Y + (cellSize * (y + 1)));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * (x - 1)), s.Y + (cellSize * y));
-                            Mouse.Release();
-                        }
-                    }
-
-                    // x-x
-                    // -x-
-
-                    if (x + 2 < 8 && y + 1 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x + 1, y + 1]) && MatchColours(grid[x + 1, y + 1], grid[x + 2, y]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * (x + 1)), s.Y + (cellSize * (y + 1)));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * (x + 1)), s.Y + (cellSize * (y)));
-                            Mouse.Release();
-                        }
-                    }
-
-                    // xx-
-                    // --x
-
-                    if (x + 2 < 8 && y + 1 < 8)
-                    {
-                        if (MatchColours(grid[x, y], grid[x + 1, y]) && MatchColours(grid[x + 1, y], grid[x + 2, y + 1]))
-                        {
-                            Mouse.MoveTo(s.X + (cellSize * (x + 2)), s.Y + (cellSize * (y + 1)));
-                            Mouse.Press();
-                            Mouse.MoveTo(s.X + (cellSize * (x + 2)), s.Y + (cellSize * y));
-                            Mouse.Release();
-                        }
-                    }
-                    
-                }
-            }
-        }
-
-        // Scan the gem grid and capture a coloured pixel from each cell
-        private void ScanGrid(bool showCentres)
-        {
-            if(debugMode)
-                debugConsole.Clear();
-
-            int top = topOffset;
-            int left = leftOffset;
-
-            // Across
-            for (int y = 0; y < 8; y++)
-            {
-                // Down
-                for (int x = 0; x < 8; x++)
-                {
-                    int t = (top + (cellSize * y));
-                    int l = (left + (cellSize * x));
-
-                    // Capture a colour from this pixel
-                    Color c = capturedArea.GetPixel(l, t);
-                    
-                    // Store it in the grid matrix at the correct position
-                    grid[x, y] = c;
-
-                    // Mark the position we are sampling on the preview for debugging
-                    if(showCentres)
-                        capturedArea.SetPixel(l, t, Color.Red);
-
-                    if (debugMode)
-                    {
-                        // Refresh the preview each iteration and write out all matrix contents (slow, hence we only do it in debug mode)
-                        preview.Image = capturedArea;
-                        debugConsole.AppendText("Row " + y + ", Col " + x + " [" + l + ", " + t + "]: " + grid[x, y] + System.Environment.NewLine);
-                    }
-                }
-            }
-        }
-
-        // Show the capture form and allow user to locate gem grid
-        private void captureButton_Click(object sender, EventArgs e)
-        {
-            var cf = new CaptureForm();
-
-            if (cf.ShowDialog() == DialogResult.OK)
-            {
-                // size is how big an area of the screen to capture
-                // origin is the upper left corner of the area to capture
-                // startPoint is the point we start sampling colour pixels from within that area
-                // capturedArea holds the bitmap data for the current iteration
-
-                origin = cf.Coordinate; // Get the coordinate clicked in the capture form and set it as the origin
-                var start = cf.Coordinate; // Get the coordinate clicked in the capture form and set it as the origin
-
-                capturedArea = new Bitmap(size.Width, size.Height);
-
-                CaptureArea(); // Get an initial snapshot where clicked
-
-                // Seek for the top left corner of the gem grid, with a tolerance of 50 pixels
-                // This means you only have to approximately click the top left corner
-                // Down
-                for (int y = 0; y < 50; y++)
-                {
-                    // Across
-                    for (int x = 0; x < 50; x++)
-                    {
-                        Color c1 = capturedArea.GetPixel(x, y);
-
-                        // If we've found a pixel that matches our top left pixel colour
-                        if(c1.R == 70 && c1.G == 33 && c1.B == 10)
-                        {
-                            Color c2 = capturedArea.GetPixel(x, (y + 1));
-
-                            // And the pixel directly below that matches this
-                            if (c2.R == 43 && c2.G == 23 && c2.B == 13)
-                            {
-                                Color c3 = capturedArea.GetPixel(x, (y + 2));
-
-                                // And the pixel directly below that matches this
-                                if (c3.R == 23 && c3.G == 21 && c3.B == 32)
-                                {
-                                    // This is our top left pixel
-                                    origin.X += x;
-                                    origin.Y += y;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                startPoint = new Point(origin.X + leftOffset, origin.Y + topOffset);
-
-                CaptureArea();
-                ScanGrid(true);
-
-                // Show the preview so user can check selection is correct
-                preview.Image = capturedArea;
-            }
-        }
-        
         // Start the play loop
         private void playButton_Click(object sender, EventArgs e)
         {
-            CaptureArea();
-            ScanGrid(false);
-            DoMoves();
+            if (gameEngine == null)
+                InitGameEngine();
 
-            tMove.Start();
-            tDuration.Interval = (int)duration.Value * 1000;
-            tDuration.Start();
         }
+
+        private void btnRestart_Click(object sender, EventArgs e)
+        {
+            if (gameEngine == null)
+                InitGameEngine();
+            else
+                KillGameEngine();
+
+        }
+
+
+
+
+        private void ckbDebug_CheckedChanged(object sender, EventArgs e)
+        {
+            if (ckbDebug.Checked)
+            {
+                if (gameEngine != null)
+                    gameEngine.DebugMode = btnSnapshot.Visible = true;
+
+                this.Height = 734;
+            }
+            else
+            {
+                if (gameEngine != null)
+                    gameEngine.DebugMode = btnSnapshot.Visible = false;
+                this.Height = 344;
+            }
+        }
+
+        private void btnSnapshot_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private Type selectedState;
+        private void StartGame()
+        {
+            if (gameEngine == null)
+            {
+                InitGameEngine();
+
+                if (selectedState != null)
+                    try
+                    {
+                        gameEngine.StateManager.PushState((BaseGameState)Activator.CreateInstance(selectedState));
+                    }
+                    catch (ApplicationException)
+                    {
+
+                    }
+                    finally
+                    {
+                        selectedState = null;
+                    }
+            }
+            else
+                KillGameEngine();
+
+        }
+
+        public Dictionary<string, Type> states = new Dictionary<string, Type>();
+
+        private void GenerateContextOptions()
+        {
+            states.Clear();
+            states.Add("Restart", typeof(States.ConfirmRestartState));
+            states.Add( "Game Results", typeof(States.GameOverState));
+            states.Add( "Game Menu", typeof(States.MenuState));
+            states.Add("Play Now", typeof(States.PlayNowState) );
+            states.Add("Rare Gem", typeof(States.RareGemState) );
+            states.Add("Star Award", typeof(States.StarState) );
+            
+            foreach (KeyValuePair<String, Type> state in states)
+            {
+                ToolStripMenuItem item = new ToolStripMenuItem();
+                item.Text = state.Key;
+                item.Size = new System.Drawing.Size(159, 22);
+                item.Name = String.Format("{0}ToolStripMenuItem", state.Value.Name);
+                item.Click += new System.EventHandler(GenericToolStripMenuItem_Click);
+
+                this.contextMenuStrip1.Items.Add(item);
+                
+            }
+
+        }
+
+        private Thread startGameThread;
+        private void GenericToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                ToolStripMenuItem item = (ToolStripMenuItem)sender;
+                
+                states.TryGetValue(item.Text, out selectedState);
+
+                
+                if (startGameThread == null || startGameThread.ThreadState == ThreadState.Stopped)
+                    startGameThread = new Thread(new ThreadStart(StartGame));
+
+                if (startGameThread.IsAlive)
+                    return;
+
+                startGameThread.Start();
+
+            }
+            catch (Exception)
+            { }
+        }
+
+
     }
 }
