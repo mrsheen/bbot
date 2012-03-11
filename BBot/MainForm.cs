@@ -59,7 +59,8 @@ namespace BBot
             this.FormClosing += new FormClosingEventHandler(Form1_FormClosing);
 
             // Put the window at top right
-            this.Location = new Point(Screen.PrimaryScreen.Bounds.Width + 20, 0);
+            //this.Location = new Point(Screen.PrimaryScreen.Bounds.Width + 20, 0);
+            this.Location = new Point(20, 20);
 
             // Initially set the preview image
             //this.preview.Image = Image.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("BBot.Assets.Instruction.bmp"));
@@ -72,7 +73,8 @@ namespace BBot
         private void InitGameEngine()
         {
             DebugMessage("Starting game engine");
-            gameEngine = new GameEngine(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
+            //gameEngine = new GameEngine(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
+            gameEngine = new GameEngine(Screen.AllScreens[1].Bounds.Width, Screen.AllScreens[1].Bounds.Height);
 
             //System.IO.Directory.CreateDirectory(workingPath);
 
