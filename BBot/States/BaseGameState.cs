@@ -41,11 +41,11 @@ namespace BBot.States
                 return;
 
             bStarting = true;
-            if (!game.GameExtentsOnScreen.HasValue)
+            if (!game.GameExtents.HasValue)
                 FindStateFromScreen(true);
             bStarted = true;
             bStarting = false;
-            if (!game.GameExtentsOnScreen.HasValue)
+            if (!game.GameExtents.HasValue)
                 throw new ApplicationException("Game state not found in screen");
         }
 
@@ -60,7 +60,7 @@ namespace BBot.States
             if (!bStarted) // Bail out if havent finished init
                 return true;
 
-            if (!game.GameExtentsOnScreen.HasValue)
+            if (!game.GameExtents.HasValue)
             {
                 game.StateManager.PopState();
                 return true;
@@ -76,7 +76,7 @@ namespace BBot.States
         {
             SearchParams search = new SearchParams();
 
-            Rectangle rSearchLocation = game.ScreenRectangle;
+            
             FindBitmap.MatchingPoint match = new FindBitmap.MatchingPoint();
 
             search.UsingGameExtents = false;
@@ -116,7 +116,6 @@ namespace BBot.States
             public int MinimumConfidence;
             public bool QuickCheck;
             public bool UsingGameExtents;
-            public Rectangle SearchLocation;
 
         }
 
@@ -175,8 +174,8 @@ namespace BBot.States
             match = FindBitmap.FindInScreen(search.SearchArea, search.ToFind, search.Mask, search.QuickCheck, search.MinimumConfidence);
             if (search.UsingGameExtents && !search.QuickCheck )
             {
-                match.X += (game.GameExtentsOnScreen.Value.X - 20);
-                match.Y += (game.GameExtentsOnScreen.Value.Y - 20);
+                match.X += (game.GameExtents.Value.X - 20);
+                match.Y += (game.GameExtents.Value.Y - 20);
             }
 
             if (match.Confident)
@@ -245,50 +244,49 @@ namespace BBot.States
 
         private void GetSearchLocation(ref SearchParams search)
         {
-            search.SearchLocation = game.ScreenRectangle;
-
-            if (game.GameExtentsOnScreen.HasValue)
-            {// Search in gamescreen if available
-                search.UsingGameExtents = true;
-                search.SearchLocation = game.GameExtentsOnScreen.Value;
-
-                if (search.QuickCheck)
-                { // Use pre-calculated offsets
-                    if (this.matchOffset != null)
-                    {
-                        search.SearchLocation.X += this.matchOffset.X;
-                        search.SearchLocation.Y += this.matchOffset.Y;
-                    }
-                    search.SearchLocation.Width = search.ToFind.Width;
-                    search.SearchLocation.Height = search.ToFind.Height;
-
-                }
-                else
-                { // Add buffer
-                    search.SearchLocation.X -= 20;
-                    search.SearchLocation.Y -= 20;
-                    search.SearchLocation.Width += 40;
-                    search.SearchLocation.Height += 40;
-                }
-            }
+            
 
         }
 
         private void GetSearchAreaBitmap(ref SearchParams search) // PixelFormat format)
         {
-            // Build up search area from screen
-            search.SearchArea = new Bitmap(search.SearchLocation.Width, search.SearchLocation.Height);
+            game.CaptureArea(); // Get search bitmap
+
+            // Set search bounds to captured area
+            Rectangle searchLocation = new Rectangle(0, 0, game.GameScreen.Width, game.GameScreen.Height);
+
+            if (game.GameExtents.HasValue)
+            {// Search in gamescreen if available
+                search.UsingGameExtents = true;
+
+                if (search.QuickCheck)
+                { // Use pre-calculated offsets
+                    if (this.matchOffset != null)
+                    {
+                        searchLocation.X += this.matchOffset.X;
+                        searchLocation.Y += this.matchOffset.Y;
+                    }
+                    searchLocation.Width = search.ToFind.Width;
+                    searchLocation.Height = search.ToFind.Height;
+
+                }
+                else
+                { // Add buffer
+                    searchLocation.X += 20;
+                    searchLocation.Y += 20;
+                    searchLocation.Width += 40;
+                    searchLocation.Height += 40;
+                }
+            }
+
+            // Copy gamescreen to search area (this will add buffer of black pixels if required
+            search.SearchArea = new Bitmap(searchLocation.Width,searchLocation.Height,search.ToFind.PixelFormat);
 
             using (Graphics g = Graphics.FromImage(search.SearchArea))
             {
-                g.CopyFromScreen(
-                    search.SearchLocation.X, search.SearchLocation.Y,
-                    0, 0,
-                    search.SearchLocation.Size);
+                g.DrawImage(game.GameScreen, searchLocation.Location); 
             }
 
-            // Set pixel format
-            search.SearchArea = search.SearchArea.Clone(new Rectangle(0, 0, search.SearchArea.Width, search.SearchArea.Height), search.ToFind.PixelFormat);
         }
 
 

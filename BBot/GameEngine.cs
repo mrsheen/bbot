@@ -15,8 +15,8 @@ namespace BBot
         private const int TickPeriod = 50;
 
         public Bitmap GameScreen; // Holds the captured area bitmap for each iteration
-        public Rectangle ScreenRectangle;
-        public Rectangle? GameExtentsOnScreen;
+        private Rectangle ScreenRectangle;
+        public Rectangle? GameExtents;
         
 
         public Bitmap PreviewScreen; // Holds the preview bitmap for each iteration
@@ -29,11 +29,10 @@ namespace BBot
         private System.Threading.Timer tickTimer;
         
 
-        public GameEngine(int screenWidth, int screenHeight)
+        public GameEngine(Rectangle screenBounds)
         {
-            GameScreen = new Bitmap(GameSize.Width, GameSize.Height);
-
-            ScreenRectangle = new Rectangle(0, 0, screenWidth, screenHeight);
+            ScreenRectangle = screenBounds;
+            GameScreen = new Bitmap(ScreenRectangle.Width, ScreenRectangle.Height);
 
             StateManager = new GameStateManager(this);
 
@@ -68,11 +67,28 @@ namespace BBot
                 DebugEvent(debugMessage);
         }
 
+        /// <summary>
+        /// Save location of game screen, relative to captured area
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
         public void UpdateGameExtents(int x, int y)
-        {            
-            GameExtentsOnScreen = new Rectangle(new Point(x, y), GameSize);
-        }
+        {
+            Point newGameLocation = new Point(x, y);
 
+            if (GameExtents.HasValue)
+            { // Update known extents, value will be +1/-1 from previous value
+                newGameLocation.X += GameExtents.Value.X;
+                newGameLocation.Y += GameExtents.Value.Y;
+            }
+            if (!GameExtents.HasValue)
+            { // Extents found from whole screen, value will be +100/-100 from screen location
+                newGameLocation.X += ScreenRectangle.X;
+                newGameLocation.Y += ScreenRectangle.Y;
+            }
+
+            GameExtents = new Rectangle(newGameLocation, GameSize);
+        }
         
         public void GameTick(object o)
         {
@@ -100,19 +116,19 @@ namespace BBot
         }
 
         // Capture the specified screen area which we set up earlier
-        private void CaptureArea()
+        public void CaptureArea()
         {
-            int captureX = 0, captureY = 0;
-            if (GameExtentsOnScreen.HasValue)
-            {
-                captureX = GameExtentsOnScreen.Value.X;
-                captureY = GameExtentsOnScreen.Value.Y;
-            }
             lock (GameScreen)
             {
+                if (GameExtents.HasValue && GameScreen.Size != GameExtents.Value.Size)
+                    GameScreen = new Bitmap(GameExtents.Value.Width, GameExtents.Value.Height);
+
                 using (Graphics graphics = Graphics.FromImage(GameScreen))
                 {
-                    graphics.CopyFromScreen(captureX, captureY, 0, 0, GameSize);
+                    graphics.CopyFromScreen(
+                        GameExtents.HasValue ? GameExtents.Value.Location : ScreenRectangle.Location,
+                        new Point(0,0),
+                        GameExtents.HasValue ? GameExtents.Value.Size : ScreenRectangle.Size);
                 }
             }
         }

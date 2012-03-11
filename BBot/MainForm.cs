@@ -74,7 +74,7 @@ namespace BBot
         {
             DebugMessage("Starting game engine");
             //gameEngine = new GameEngine(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
-            gameEngine = new GameEngine(Screen.AllScreens[1].Bounds.Width, Screen.AllScreens[1].Bounds.Height);
+            gameEngine = new GameEngine(Screen.AllScreens[1].Bounds);
 
             //System.IO.Directory.CreateDirectory(workingPath);
 

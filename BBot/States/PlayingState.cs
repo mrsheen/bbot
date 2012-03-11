@@ -343,13 +343,13 @@ namespace BBot.States
             //if (debugMode)
             game.Debug(String.Format("Move made: {0},{1} - {2},{3}", new Object[] { x1 - 2, y1 - 2, x2 - 2, y2 - 2 }));
             // debugConsole.AppendText(String.Format("Move made: {0},{1} - {2},{3}", new Object[] { x1 - 2, y1 - 2, x2 - 2, y2 - 2 }) + System.Environment.NewLine);
-            if (!game.GameExtentsOnScreen.HasValue)
+            if (!game.GameExtents.HasValue)
                 return; // Last minute catch to ensure we have accurate location for mouse clicks
 
 
             SetDelay(x1, y1, primaryDelay);
 
-            Rectangle startPoint = game.GameExtentsOnScreen.Value;
+            Rectangle startPoint = game.GameExtents.Value;
             startPoint.X += BoardLocationOnGame.X;
             startPoint.Y += BoardLocationOnGame.Y;
 

@@ -18,8 +18,8 @@ namespace BBot.States
         {
             base.Start();
 
-            clickX = game.GameExtentsOnScreen.Value.X + 260;
-            clickY = game.GameExtentsOnScreen.Value.Y + 315;
+            clickX = game.GameExtents.Value.X + 260;
+            clickY = game.GameExtents.Value.Y + 315;
             transitionState = new RareGemState();
         }
 

@@ -20,9 +20,9 @@ namespace BBot.States
             base.Start();
 
 
-            clickX = game.GameExtentsOnScreen.Value.X + 340;
-            clickY = game.GameExtentsOnScreen.Value.Y + 190;
-            transitionState = new PlayNowState();
+            clickX = game.GameExtents.Value.X + 340;
+            clickY = game.GameExtents.Value.Y + 190;
+            transitionState = new ConfirmRestartState();
         }
 
         public override void Update()

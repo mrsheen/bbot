@@ -18,8 +18,8 @@ namespace BBot.States
         public override void Start()
         {
             base.Start();
-            clickX = game.GameExtentsOnScreen.Value.X + 210;
-            clickY = game.GameExtentsOnScreen.Value.Y + 390;
+            clickX = game.GameExtents.Value.X + 210;
+            clickY = game.GameExtents.Value.Y + 390;
             transitionState = new PlayNowState();
         }
 
