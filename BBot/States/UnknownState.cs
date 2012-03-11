@@ -7,7 +7,6 @@ namespace BBot.States
 {
     public partial class UnknownState : BaseGameState
     {
-        
         public UnknownState()
         {
             AssetName = "-none-";
@@ -28,15 +27,14 @@ namespace BBot.States
             bmpPreviousGameScreen = new Bitmap(1, 1);
             previousTimestamp = DateTime.Now.AddMilliseconds(-5001);
             checkCount = 0;
+
+            // Manually override start flag
+            bStarted = true;
         }
-        public override void Cleanup() { }
-
-        public override void Pause() { }
-
-        public override void Resume() { }
-
+        
         public override bool HandleEvents()
         {
+
             while (game.EventStack.Count > 0)
             {
                 GameEvent myEvent = game.EventStack.Pop();

@@ -15,11 +15,6 @@ namespace BBot.States
 
             AssetName = "wholegame.playing";
             MinimumConfidence = 200000;
-        }
-        public override void Start()
-        {
-            
-            base.Start();
 
             BuildGemColorStats();
             delay = new int[GridSize + 4, GridSize + 4];
@@ -27,7 +22,7 @@ namespace BBot.States
             bHuzzah = false;
 
 
-            timer = new Timer(new TimerCallback(GameOver), game, 65 * 1000, Timeout.Infinite);
+            //timer = new Timer(new TimerCallback(GameOver), game, 65 * 1000, Timeout.Infinite);
             
         }
 
@@ -105,7 +100,7 @@ namespace BBot.States
 
         private void GetBoardFromGame(GameEngine game)
         {
-            lock (game.GameScreen)
+            lock (game.GameScreenLOCK)
             {
                 bmpBoard = game.GameScreen.Clone(new Rectangle(BoardLocationOnGame, BoardSize), game.GameScreen.PixelFormat);
             }

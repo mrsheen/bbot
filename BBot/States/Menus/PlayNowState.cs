@@ -14,14 +14,9 @@ namespace BBot.States
             MinimumConfidence = 200000;
             matchOffset = new Point(1, 0);
 
-        }
+            transitionClickOffset.X = 265;
+            transitionClickOffset.Y = 365;
 
-        public override void Start()
-        {
-            base.Start();
-
-            clickX = game.GameExtents.Value.X + 265;
-            clickY = game.GameExtents.Value.Y + 365;
             transitionState = new PlayingState();
         }
 

@@ -8,8 +8,7 @@ namespace BBot.States
     public abstract class BaseMenuState : BaseGameState
     {
         protected Stack<BaseGameState> findStates = new Stack<BaseGameState>();
-        protected int clickX = 0;
-        protected int clickY = 0;
+        protected Point transitionClickOffset; // location of transition button relative to game screen
         protected BaseGameState transitionState;
         
 
@@ -17,7 +16,6 @@ namespace BBot.States
         private bool bFirstRun = false;
 
         protected BaseMenuState() { }
-
         
         public override void Init(GameEngine gameRef)
         {
@@ -60,6 +58,9 @@ namespace BBot.States
                 return true;
             }
 
+
+
+
             return false;
         }
 
@@ -85,7 +86,9 @@ namespace BBot.States
                     if (this.AssetName.Equals(state.AssetName))
                     {
                         // Click 'yes' button to confirm restart
-                        SendInputClass.Click(clickX, clickY);
+                        SendInputClass.Click(
+                            game.GameExtents.Value.X + transitionClickOffset.X,
+                            game.GameExtents.Value.Y + transitionClickOffset.Y);
                         SendInputClass.Move(0, 0);
                         // Assume next state
                         game.EventStack.Push(new GameEvent(EngineEventType.CHANGE_MENU, transitionState));

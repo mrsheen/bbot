@@ -13,13 +13,10 @@ namespace BBot.States
         {
             AssetName = "wholegame.raregem";
             MinimumConfidence = 300000;
-        }
 
-        public override void Start()
-        {
-            base.Start();
-            clickX = game.GameExtents.Value.X + 210;
-            clickY = game.GameExtents.Value.Y + 390;
+            transitionClickOffset.X = 210;
+            transitionClickOffset.Y  = 390;
+
             transitionState = new PlayNowState();
         }
 

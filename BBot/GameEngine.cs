@@ -11,13 +11,15 @@ namespace BBot
     public class GameEngine
     {
         public readonly Size GameSize = new Size(525, 435);
-        
+
         private const int TickPeriod = 50;
+
+        public Object GameScreenLOCK = new Object();
 
         public Bitmap GameScreen; // Holds the captured area bitmap for each iteration
         private Rectangle ScreenRectangle;
         public Rectangle? GameExtents;
-        
+
 
         public Bitmap PreviewScreen; // Holds the preview bitmap for each iteration
 
@@ -27,7 +29,7 @@ namespace BBot
         public GameStateManager StateManager;
 
         private System.Threading.Timer tickTimer;
-        
+
 
         public GameEngine(Rectangle screenBounds)
         {
@@ -42,7 +44,7 @@ namespace BBot
 
             tickTimer = new Timer(new TimerCallback(GameTick), null, 0, TickPeriod);
         }
-                
+
 
         public void Cleanup()
         {
@@ -89,7 +91,7 @@ namespace BBot
 
             GameExtents = new Rectangle(newGameLocation, GameSize);
         }
-        
+
         public void GameTick(object o)
         {
             if (tickTimer == null)
@@ -97,40 +99,49 @@ namespace BBot
             // Game tick, do something
             if (Monitor.TryEnter(StateManager))
             {
-                try {
+                try
+                {
                     // This gets fired every N seconds in order to perform moves
-                CaptureArea();
-                if (StateManager.HandleEvents())
-                    return;
-
-
-                StateManager.Update();
-                StateManager.Draw();
+                    if (CaptureArea())
+                        return;
+                    
+                    StateManager.Run();
                 }
                 finally
                 {
                     Monitor.Exit(StateManager);
                 }
             }
-            
+
         }
 
         // Capture the specified screen area which we set up earlier
-        public void CaptureArea()
+        public bool CaptureArea()
         {
-            lock (GameScreen)
+            if (Monitor.TryEnter(GameScreenLOCK))
             {
-                if (GameExtents.HasValue && GameScreen.Size != GameExtents.Value.Size)
-                    GameScreen = new Bitmap(GameExtents.Value.Width, GameExtents.Value.Height);
-
-                using (Graphics graphics = Graphics.FromImage(GameScreen))
+                try
                 {
-                    graphics.CopyFromScreen(
-                        GameExtents.HasValue ? GameExtents.Value.Location : ScreenRectangle.Location,
-                        new Point(0,0),
-                        GameExtents.HasValue ? GameExtents.Value.Size : ScreenRectangle.Size);
+                    if (GameExtents.HasValue && GameScreen.Size != GameExtents.Value.Size)
+                        GameScreen = new Bitmap(GameExtents.Value.Width, GameExtents.Value.Height);
+
+                    using (Graphics graphics = Graphics.FromImage(GameScreen))
+                    {
+                        graphics.CopyFromScreen(
+                            GameExtents.HasValue ? GameExtents.Value.Location : ScreenRectangle.Location,
+                            new Point(0, 0),
+                            GameExtents.HasValue ? GameExtents.Value.Size : ScreenRectangle.Size);
+                    }
+
+                    return false;
+                }
+                finally
+                {
+                    Monitor.Exit(GameScreenLOCK);
                 }
             }
+
+            return true;
         }
 
         public FindBitmap.MatchingPoint FindStateFromScreen(Type classType, bool bQuickCheck = false)
@@ -148,17 +159,15 @@ namespace BBot
             return state.FindStateFromScreen(bQuickCheck);
         }
 
-       
+
     }
 
     public class GameStateManager
     {
         private Stack<BaseGameState> states;
-        private Thread UpdateThread;
-        private Thread StartThread;
         
-
         private GameEngine game;
+        private Thread RunThread;
 
         public GameStateManager(GameEngine gameRef)
         {
@@ -169,22 +178,15 @@ namespace BBot
 
         public void Cleanup()
         {
-            if (UpdateThread != null)
+            if (RunThread != null)
             {
-                UpdateThread.Abort();
-                UpdateThread = null;
+                RunThread.Abort();
+                RunThread = null;
             }
-
-            if (StartThread != null)
-            {
-                StartThread.Abort();
-                StartThread = null;
-            }
-
 
             while (states.Count > 0)
                 states.Pop().Cleanup();
-            
+
         }
 
         public void ChangeState(BaseGameState newState)
@@ -195,10 +197,6 @@ namespace BBot
 
             states.Push(newState);
             states.Peek().Init(game);
-            states.Peek().Start();
-
-            Thread.Sleep(500);
-            
         }
 
         public void PushState(BaseGameState newState)
@@ -209,8 +207,7 @@ namespace BBot
 
             states.Push(newState);
             states.Peek().Init(game);
-            SendInputClass.Move(0, 0);
-            Thread.Sleep(500);
+            //SendInputClass.Move(0, 0);// TODO Move to form pause button in some way
         }
 
         public BaseGameState PopState()
@@ -227,63 +224,24 @@ namespace BBot
 
             return state;
         }
-
-
-        public bool HandleEvents()
+        public void Run()
         {
             if (states.Count == 0)
-                return true;
+                return;
 
-            try
+            if (states.Peek().HandleEvents())
+                return;
+
+            if (RunThread == null || RunThread.ThreadState == ThreadState.Stopped)
             {
-                if (StartThread == null || StartThread.ThreadState == ThreadState.Stopped)
-                    StartThread = new Thread(new ThreadStart(StartState));
+                RunThread = new Thread(new ThreadStart(states.Peek().Run));
+                RunThread.Name = String.Format("RunThread-{0}-{1}", states.Peek().AssetName, DateTime.Now);
 
-                if (StartThread.IsAlive)
-                    throw new ApplicationException("BaseGameState.Start() already requested");
-
-
-                StartThread.Start();
-                //states.Peek().Start();
             }
-            catch (Exception)
-            {
-                
-            }
+            if (RunThread.IsAlive)
+                return;
 
-
-            return states.Peek().HandleEvents();
-        }
-
-        private void StartState()
-        {
-            try
-            {
-                if (states.Count > 0)
-                    states.Peek().Start();
-            }
-            catch (Exception) { }
-        }
-
-        public void Update()
-        {
-            if (states.Count > 0)
-            {
-                if (UpdateThread == null || UpdateThread.ThreadState == ThreadState.Stopped)
-                    UpdateThread = new Thread(new ThreadStart(states.Peek().Update));
-
-                if (UpdateThread.IsAlive)
-                    return;
-
-                
-                UpdateThread.Start();
-                //states.Peek().Update(game);
-            }
-        }
-        public void Draw()
-        {
-            if (states.Count > 0)
-                states.Peek().Draw();
+            RunThread.Start();
         }
     }
 

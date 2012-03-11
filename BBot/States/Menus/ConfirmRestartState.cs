@@ -14,15 +14,11 @@ namespace BBot.States
             AssetName = "wholegame.confirmrestart";
             MinimumConfidence = 300000;
             matchOffset = new Point(1, 0);
-        }
 
-        public override void Start()
-        {
-            base.Start();
+            transitionClickOffset.X = 405;
+            transitionClickOffset.Y = 260;
 
 
-            clickX = game.GameExtents.Value.X + 405;
-            clickY = game.GameExtents.Value.Y + 260;
             transitionState = new PlayNowState();
         }
 

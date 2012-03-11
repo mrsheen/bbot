@@ -12,14 +12,11 @@ namespace BBot.States
         {
             AssetName = "wholegame.gameover";
             MinimumConfidence = 350000;
-        }
 
-        public override void Start()
-        {
-            base.Start();
+            transitionClickOffset.X = 260;
+            transitionClickOffset.Y = 315;
 
-            clickX = game.GameExtents.Value.X + 260;
-            clickY = game.GameExtents.Value.Y + 315;
+
             transitionState = new RareGemState();
         }
 
@@ -28,8 +25,6 @@ namespace BBot.States
             findStates.Push(new PlayNowState());
             findStates.Push(new MenuState());
             findStates.Push(new StarState());
-
-
 
             base.Update();
         }

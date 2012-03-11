@@ -42,17 +42,18 @@ namespace BBot
         public static Bitmap CreateIntensityMask(Bitmap bSurface)
         {
             // Create new graphics surface from memory bitmap
-            Graphics DrawSurface = Graphics.FromImage(bSurface);
-            // Set background color to white so that pixels can be correctly colorized
-            DrawSurface.Clear(Color.White);
-
-            // Traverse heat point data and draw masks for each heat point
-            foreach (HeatPoint DataPoint in heatPoints)
+            using (Graphics DrawSurface = Graphics.FromImage(bSurface))
             {
-                // Render current heat point on draw surface
-                DrawHeatPoint(DrawSurface, DataPoint, 25);
-            }
+                // Set background color to white so that pixels can be correctly colorized
+                DrawSurface.Clear(Color.White);
 
+                // Traverse heat point data and draw masks for each heat point
+                foreach (HeatPoint DataPoint in heatPoints)
+                {
+                    // Render current heat point on draw surface
+                    DrawHeatPoint(DrawSurface, DataPoint, 25);
+                }
+            }
             return bSurface;
         }
 
@@ -133,21 +134,22 @@ namespace BBot
             Bitmap Output = new Bitmap(Mask.Width, Mask.Height, PixelFormat.Format32bppArgb);
 
             // Create a graphics object from our memory bitmap so we can draw on it and clear it's drawing surface
-            Graphics Surface = Graphics.FromImage(Output);
-            Surface.Clear(Color.Transparent);
+            using (Graphics Surface = Graphics.FromImage(Output))
+            {
+                Surface.Clear(Color.Transparent);
 
-            // Build an array of color mappings to remap our greyscale mask to full color
-            // Accept an alpha byte to specify the transparancy of the output image
-            ColorMap[] Colors = CreatePaletteIndex(Alpha);
+                // Build an array of color mappings to remap our greyscale mask to full color
+                // Accept an alpha byte to specify the transparancy of the output image
+                ColorMap[] Colors = CreatePaletteIndex(Alpha);
 
-            // Create new image attributes class to handle the color remappings
-            // Inject our color map array to instruct the image attributes class how to do the colorization
-            ImageAttributes Remapper = new ImageAttributes();
-            Remapper.SetRemapTable(Colors);
+                // Create new image attributes class to handle the color remappings
+                // Inject our color map array to instruct the image attributes class how to do the colorization
+                ImageAttributes Remapper = new ImageAttributes();
+                Remapper.SetRemapTable(Colors);
 
-            // Draw our mask onto our memory bitmap work surface using the new color mapping scheme
-            Surface.DrawImage(Mask, new Rectangle(0, 0, Mask.Width, Mask.Height), 0, 0, Mask.Width, Mask.Height, GraphicsUnit.Pixel, Remapper);
-
+                // Draw our mask onto our memory bitmap work surface using the new color mapping scheme
+                Surface.DrawImage(Mask, new Rectangle(0, 0, Mask.Width, Mask.Height), 0, 0, Mask.Width, Mask.Height, GraphicsUnit.Pixel, Remapper);
+            }
             // Send back newly colorized memory bitmap
             return Output;
         }

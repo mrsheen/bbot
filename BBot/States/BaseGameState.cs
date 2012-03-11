@@ -4,6 +4,10 @@ using System.Text;
 using System.Drawing;
 using System.Reflection;
 using System.Drawing.Imaging;
+using System.Runtime.Remoting.Contexts;
+using System.IO;
+using System.Linq;
+using System.Threading;
 
 namespace BBot.States
 {
@@ -17,7 +21,7 @@ namespace BBot.States
         public Point matchOffset;
 
         protected bool bStarted = false;
-        protected bool bStarting = false;
+        
 
         public BaseGameState()
         {
@@ -29,27 +33,30 @@ namespace BBot.States
         public virtual void Init(GameEngine gameRef)
         {
             game = gameRef;
-            bStarted = false;
         }
 
-        public virtual void Start()
+        private Thread FindThread;
+
+        private void TryFindState()
         {
-            if (bStarted)
-                throw new ApplicationException("Game state already started");
 
-            if (bStarting)
-                return;
+            FindStateFromScreen(true);
 
-            bStarting = true;
             if (!game.GameExtents.HasValue)
-                FindStateFromScreen(true);
+                game.StateManager.PopState();
+
             bStarted = true;
-            bStarting = false;
-            if (!game.GameExtents.HasValue)
-                throw new ApplicationException("Game state not found in screen");
+            return;
         }
 
-        public virtual void Cleanup() { }
+
+        public virtual void Cleanup() {
+            if (FindThread != null)
+            {
+                FindThread.Abort();
+                FindThread = null;
+            }
+        }
 
         public virtual void Pause() { }
 
@@ -57,15 +64,47 @@ namespace BBot.States
 
         public virtual bool HandleEvents()
         {
-            if (!bStarted) // Bail out if havent finished init
-                return true;
-
-            if (!game.GameExtents.HasValue)
+            if (game.EventStack.Count > 0)
             {
-                game.StateManager.PopState();
-                return true;
+                GameEvent myEvent = game.EventStack.Pop();
+
+
+                if (myEvent.eventType == EngineEventType.ENGINE_INIT)
+                {
+                    FindThread = new Thread(new ThreadStart(TryFindState));
+                    FindThread.Name = String.Format("FindThread-{0}-{1}", this.AssetName, DateTime.Now);
+
+                    FindThread.Start();
+
+                    return true;
+
+                }
+
+              
+
+
+                if (myEvent.eventType == EngineEventType.ENGINE_SHUTDOWN)
+                {
+                    this.Cleanup();
+                    return true;
+
+                }
+
+                game.EventStack.Push(myEvent);
             }
+
+            
+
             return false;
+        }
+
+        public void Run()
+        {
+            if (!bStarted && !game.GameExtents.HasValue)
+                return;
+
+            this.Update();
+            this.Draw();
         }
 
         public virtual void Update() { }
@@ -88,7 +127,6 @@ namespace BBot.States
             search.Mask = GetBitmapByType(StateBitmapType.Mask, search.ToFind.Size, search.ToFind.PixelFormat);
 
             //STEP2: Get area of screen to search
-            GetSearchLocation(ref search);
             GetSearchAreaBitmap(ref search);
 
             //STEP3: Do search
@@ -188,64 +226,77 @@ namespace BBot.States
         private Bitmap GetBitmapByType(StateBitmapType bitmapType, Size? size = null, PixelFormat? format = null)
         {
             Bitmap rootBitmap = null;
+            Bitmap filterBitmap = null;
             string assetName = String.Empty;
             AForge.Imaging.Filters.Add addFilter;
             try
             {
-
-                // Get area to find
-                rootBitmap = GetBitmap(this.AssetName, size, format);
-
                 // Add given masks
                 switch (bitmapType)
                 {
                     case StateBitmapType.SmartMask:
+                        rootBitmap = GetBitmap(this.AssetName, size, format);
                         assetName = "wholegame.background";
-                        addFilter = new AForge.Imaging.Filters.Add(GetBitmap(assetName, size, format));
-                        addFilter.ApplyInPlace(rootBitmap);
+                        filterBitmap = GetBitmap(assetName, size, format);
+                        if (filterBitmap != null)
+                        {
+                            addFilter = new AForge.Imaging.Filters.Add(filterBitmap);
+                            addFilter.ApplyInPlace(rootBitmap);
+                        }
                         goto case StateBitmapType.Mask; // farking c#: http://stackoverflow.com/a/174223
                     case StateBitmapType.Blue:
                     case StateBitmapType.Mask:
                         // Get area to find
+                        if (rootBitmap == null)
+                            rootBitmap = GetBitmap("wholegame.blankmask", size, format);
                         assetName = String.Format("{0}.mask", this.AssetName);
-                        addFilter = new AForge.Imaging.Filters.Add(GetBitmap(assetName, size, format));
-                        addFilter.ApplyInPlace(rootBitmap);
-
+                        filterBitmap = GetBitmap(assetName, size, format);
+                        if (filterBitmap != null)
+                        {
+                            addFilter = new AForge.Imaging.Filters.Add(filterBitmap);
+                            addFilter.ApplyInPlace(rootBitmap);
+                        }
                         break;
                     case StateBitmapType.RawImage:
+                        rootBitmap = GetBitmap(this.AssetName, size, format);
+                        break;
                     default:
                         break; // do nothing
                 }
-
-            }
-            catch (OutOfMemoryException)
-            {
-                // Bitmap sizes must be different trying to clone
-                Bitmap filterBitmap = (Bitmap)System.Drawing.Bitmap.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream(String.Format("BBot.Assets.{0}.bmp", assetName)));
-                Rectangle rectFailed = new Rectangle(0, 0,
-                        size.HasValue ? size.Value.Width : filterBitmap.Width,
-                        size.HasValue ? size.Value.Height : filterBitmap.Height);
 
             }
             catch (Exception) { }
             return rootBitmap;
         }
 
+        
         private Bitmap GetBitmap(string assetName, Size? size, PixelFormat? format)
         {
-            Bitmap filterBitmap = (Bitmap)System.Drawing.Bitmap.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream(String.Format("BBot.Assets.{0}.bmp", assetName)));
-            filterBitmap = filterBitmap.Clone(
-                new Rectangle(0, 0,
-                    size.HasValue ? size.Value.Width : filterBitmap.Width,
-                    size.HasValue ? size.Value.Height : filterBitmap.Height),
-                format.HasValue ? format.Value : filterBitmap.PixelFormat);
-            return filterBitmap;
-        }
+            Bitmap assetBitmap = null;
 
-        private void GetSearchLocation(ref SearchParams search)
-        {
+            String fullAssetName = String.Format("BBot.Assets.{0}.bmp", assetName);
+            String[] assetNames = Assembly.GetExecutingAssembly().GetManifestResourceNames();
             
+            if (!assetNames.Contains(fullAssetName))
+                return assetBitmap; // Asset not found, return null
 
+            Stream ImageAsset = Assembly.GetExecutingAssembly().GetManifestResourceStream(fullAssetName);
+            assetBitmap = (Bitmap)System.Drawing.Bitmap.FromStream(ImageAsset);
+
+            if (!size.HasValue && !format.HasValue)
+                return assetBitmap; // No need to reformat, return raw asset
+
+            // Copy asset to correct size and format (this will add buffer of black pixels if required)
+            Bitmap resizedAssetBitmap = new Bitmap( size.HasValue ? size.Value.Width : assetBitmap.Width,
+                                                    size.HasValue ? size.Value.Height : assetBitmap.Height,
+                                                    format.HasValue ? format.Value : assetBitmap.PixelFormat);
+
+            using (Graphics g = Graphics.FromImage(resizedAssetBitmap))
+            {
+                g.DrawImage(assetBitmap, 0,0,assetBitmap.Width, assetBitmap.Height);
+            }
+
+            return resizedAssetBitmap;
         }
 
         private void GetSearchAreaBitmap(ref SearchParams search) // PixelFormat format)

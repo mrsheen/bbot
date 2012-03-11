@@ -78,8 +78,8 @@ namespace BBot
 
             //System.IO.Directory.CreateDirectory(workingPath);
 
-            gameEngine.DebugEvent += new GameEngine.DebugDelegate(DebugMessage);
-            FindBitmap.ImageSearchEvent += new FindBitmap.ImageSearchDelegate(ImageSearch);
+            gameEngine.DebugEvent += DebugMessage;
+            FindBitmap.ImageSearchEvent += ImageSearch;
 
             playButton.Enabled = true;
 
@@ -93,11 +93,15 @@ namespace BBot
             if (startGameThread != null)
             {
                 startGameThread.Abort();
-                startGameThread= null;
+                startGameThread = null;
             }
 
             if (gameEngine != null)
                 gameEngine.Cleanup();
+
+            gameEngine.DebugEvent -= DebugMessage;
+            FindBitmap.ImageSearchEvent -= ImageSearch;
+
 
             gameEngine = null;
 
@@ -288,12 +292,12 @@ namespace BBot
         {
             states.Clear();
             states.Add("Restart", typeof(States.ConfirmRestartState));
-            states.Add( "Game Results", typeof(States.GameOverState));
-            states.Add( "Game Menu", typeof(States.MenuState));
-            states.Add("Play Now", typeof(States.PlayNowState) );
-            states.Add("Rare Gem", typeof(States.RareGemState) );
-            states.Add("Star Award", typeof(States.StarState) );
-            
+            states.Add("Game Results", typeof(States.GameOverState));
+            states.Add("Game Menu", typeof(States.MenuState));
+            states.Add("Play Now", typeof(States.PlayNowState));
+            states.Add("Rare Gem", typeof(States.RareGemState));
+            states.Add("Star Award", typeof(States.StarState));
+
             foreach (KeyValuePair<String, Type> state in states)
             {
                 ToolStripMenuItem item = new ToolStripMenuItem();
@@ -303,7 +307,7 @@ namespace BBot
                 item.Click += new System.EventHandler(GenericToolStripMenuItem_Click);
 
                 this.contextMenuStrip1.Items.Add(item);
-                
+
             }
 
         }
@@ -311,24 +315,18 @@ namespace BBot
         private Thread startGameThread;
         private void GenericToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            try
-            {
-                ToolStripMenuItem item = (ToolStripMenuItem)sender;
-                
-                states.TryGetValue(item.Text, out selectedState);
 
+            ToolStripMenuItem item = (ToolStripMenuItem)sender;
+
+            if (states.TryGetValue(item.Text, out selectedState))
                 StartGame();
-                //if (startGameThread == null || startGameThread.ThreadState == ThreadState.Stopped)
-                //    startGameThread = new Thread(new ThreadStart(StartGame));
+            //if (startGameThread == null || startGameThread.ThreadState == ThreadState.Stopped)
+            //    startGameThread = new Thread(new ThreadStart(StartGame));
 
-                //if (startGameThread.IsAlive)
-                //    return;
+            //if (startGameThread.IsAlive)
+            //    return;
 
-                //startGameThread.Start();
-
-            }
-            catch (Exception)
-            { }
+            //startGameThread.Start();
         }
 
 
