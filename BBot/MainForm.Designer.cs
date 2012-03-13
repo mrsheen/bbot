@@ -50,6 +50,7 @@
             // 
             // playButton
             // 
+            this.playButton.ContextMenuStrip = this.contextMenuStrip1;
             this.playButton.Location = new System.Drawing.Point(12, 12);
             this.playButton.Name = "playButton";
             this.playButton.Size = new System.Drawing.Size(116, 42);
@@ -97,7 +98,7 @@
             // 
             // btnRestart
             // 
-            this.btnRestart.ContextMenuStrip = this.contextMenuStrip1;
+            
             this.btnRestart.Location = new System.Drawing.Point(12, 60);
             this.btnRestart.Name = "btnRestart";
             this.btnRestart.Size = new System.Drawing.Size(116, 42);

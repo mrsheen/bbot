@@ -47,7 +47,7 @@ namespace BBot
 
             // Set up the timer that performs the moves
             tUpdateDisplay.Tick += new EventHandler(UpdateDisplay_tick);
-            tUpdateDisplay.Interval = 1000; // Perform a move every N milliseconds
+            tUpdateDisplay.Interval = 10; // Perform a move every N milliseconds
             tUpdateDisplay.Enabled = true;
             tUpdateDisplay.Stop();
 
@@ -66,78 +66,128 @@ namespace BBot
             //this.preview.Image = Image.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("BBot.Assets.Instruction.bmp"));
             ckbDebug.Checked = Convert.ToBoolean(ConfigurationManager.AppSettings["DebugMode"]);
 
-            //InitGameEngine(); // Start manually
+            InitGameEngine(); // Start manually
 
         }
 
         private void InitGameEngine()
         {
-            DebugMessage("Starting game engine");
+            DebugMessage("Initializing game engine");
             //gameEngine = new GameEngine(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
             gameEngine = new GameEngine(Screen.AllScreens[1].Bounds);
 
             //System.IO.Directory.CreateDirectory(workingPath);
 
             gameEngine.DebugEvent += DebugMessage;
-            FindBitmap.ImageSearchEvent += ImageSearch;
+            gameEngine.findBitmapWorker.ImageSearchEvent += ImageSearch;
 
             playButton.Enabled = true;
 
             tUpdateDisplay.Start();
+
         }
 
         private void KillGameEngine()
         {
             tUpdateDisplay.Stop();
 
-            if (startGameThread != null)
-            {
-                startGameThread.Abort();
-                startGameThread = null;
-            }
+            //if (startGameThread != null)
+            //{
+            //    if (states.Count > 0)
+            //        states.Peek().StopRequested = true;
+
+
+            //    startGameThread.Join();
+            //    startGameThread = null;
+            //}
 
             if (gameEngine != null)
+            {
                 gameEngine.Cleanup();
 
-            gameEngine.DebugEvent -= DebugMessage;
-            FindBitmap.ImageSearchEvent -= ImageSearch;
-
+                gameEngine.DebugEvent -= DebugMessage;
+                gameEngine.findBitmapWorker.ImageSearchEvent -= ImageSearch;
+            }
 
             gameEngine = null;
 
             playButton.Enabled = false;
         }
 
+        private readonly object PlotDetailsLOCK = new Object();
         private void UpdateDisplay_tick(object sender, EventArgs e)
         {
+            lock (PlotDetailsLOCK)
+            {
+                foreach (FindBitmapWorker.ImageSearchDetails details in detailsWaiting)
+                {
+                    plotValue(details);
+                }
+
+                detailsWaiting.Clear();
+
+
+            }
+
+            lock (DebugMessagesLOCK)
+            {
+
+                foreach (string debugMessage in messagesWaiting)
+                {
+                    UpdateDebug(debugMessage);
+
+                }
+                messagesWaiting.Clear();
+
+            }
+
             //lock (gameEngine.GameScreen)
             //{
             //    //preview.Image = gameEngine.GameScreen.Clone(new Rectangle(0, 0, gameEngine.GameScreen.Width, gameEngine.GameScreen.Height), gameEngine.GameScreen.PixelFormat);
             //}
         }
 
+        private readonly object DebugMessagesLOCK = new Object();
+
+        private List<string> messagesWaiting = new List<string>();
         private void DebugMessage(string debugMessage)
+        {
+            lock (DebugMessagesLOCK)
+            {
+                messagesWaiting.Add(debugMessage);
+            }
+
+        }
+
+        private void UpdateDebug(string debugMessage)
         {
             if (debugConsole.InvokeRequired)
             {
-                debugConsole.Invoke(new MethodInvoker(() => { DebugMessage(debugMessage); }));
+                debugConsole.Invoke(new MethodInvoker(() => { UpdateDebug(debugMessage); }));
 
             }
             else
             {
 
+
                 debugConsole.AppendText(String.Format("{0} - {1}", DateTime.Now, debugMessage) + Environment.NewLine);
                 debugConsole.ScrollToCaret();
+
+            }
+
+        }
+
+        private List<FindBitmapWorker.ImageSearchDetails> detailsWaiting = new List<FindBitmapWorker.ImageSearchDetails>();
+        private void ImageSearch(FindBitmapWorker.ImageSearchDetails details)
+        {
+            lock (PlotDetailsLOCK)
+            {
+                detailsWaiting.Add(details);
             }
         }
 
-        private void ImageSearch(FindBitmap.ImageSearchDetails details)
-        {
-            plotValue(details);
-        }
-
-        private Dictionary<FindBitmap.ImageSearchDetailsType, int> counts = new Dictionary<FindBitmap.ImageSearchDetailsType, int>();
-        private void plotValue(FindBitmap.ImageSearchDetails details)
+        private Dictionary<FindBitmapWorker.ImageSearchDetailsType, int> counts = new Dictionary<FindBitmapWorker.ImageSearchDetailsType, int>();
+        private void plotValue(FindBitmapWorker.ImageSearchDetails details)
         {
             if (pictureBox1.InvokeRequired)
             {
@@ -152,7 +202,7 @@ namespace BBot
                 using (Graphics g = Graphics.FromHwnd(pictureBox1.Handle))
                 {
                     SolidBrush brush = new SolidBrush(Color.White);
-                    if (details.type.Equals(FindBitmap.ImageSearchDetailsType.MatchCertainty))
+                    if (details.type.Equals(FindBitmapWorker.ImageSearchDetailsType.MatchCertainty))
                         g.FillRectangle(brush, new Rectangle(counts[details.type] - 1, 0, 5, pictureBox1.Height));
 
                     brush.Color = GetColor(details);
@@ -178,14 +228,14 @@ namespace BBot
             return (int)(currentValue * pictureBox1.Height / 100D);
         }
 
-        private Color GetColor(FindBitmap.ImageSearchDetails details)
+        private Color GetColor(FindBitmapWorker.ImageSearchDetails details)
         {
             switch (details.type)
             {
-                case FindBitmap.ImageSearchDetailsType.CertaintyDelta:
+                case FindBitmapWorker.ImageSearchDetailsType.CertaintyDelta:
                     return Color.Orange;
 
-                case FindBitmap.ImageSearchDetailsType.MatchCertainty:
+                case FindBitmapWorker.ImageSearchDetailsType.MatchCertainty:
                     return Color.LimeGreen;
 
                 default:
@@ -221,18 +271,15 @@ namespace BBot
         // Start the play loop
         private void playButton_Click(object sender, EventArgs e)
         {
-            if (gameEngine == null)
-                InitGameEngine();
-
+            StartGame();
         }
 
         private void btnRestart_Click(object sender, EventArgs e)
         {
-            if (gameEngine == null)
-                InitGameEngine();
-            else
+            if (gameEngine != null)
                 KillGameEngine();
 
+            StartGame();
         }
 
 
@@ -264,25 +311,26 @@ namespace BBot
         private void StartGame()
         {
             if (gameEngine == null)
-            {
                 InitGameEngine();
 
-                if (selectedState != null)
-                    try
-                    {
-                        gameEngine.StateManager.PushState((BaseGameState)Activator.CreateInstance(selectedState));
-                    }
-                    catch (ApplicationException)
-                    {
 
-                    }
-                    finally
-                    {
-                        selectedState = null;
-                    }
+            if (selectedState != null)
+            {
+                try
+                {
+                    gameEngine.StateManager.PushState((BaseGameState)Activator.CreateInstance(selectedState));
+                }
+                catch (ApplicationException)
+                {
+
+                }
+                finally
+                {
+                    selectedState = null;
+                }
             }
-            else
-                KillGameEngine();
+
+            gameEngine.Start();
 
         }
 
@@ -312,21 +360,12 @@ namespace BBot
 
         }
 
-        private Thread startGameThread;
         private void GenericToolStripMenuItem_Click(object sender, EventArgs e)
         {
-
             ToolStripMenuItem item = (ToolStripMenuItem)sender;
 
             if (states.TryGetValue(item.Text, out selectedState))
                 StartGame();
-            //if (startGameThread == null || startGameThread.ThreadState == ThreadState.Stopped)
-            //    startGameThread = new Thread(new ThreadStart(StartGame));
-
-            //if (startGameThread.IsAlive)
-            //    return;
-
-            //startGameThread.Start();
         }
 
 

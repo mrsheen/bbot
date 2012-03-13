@@ -71,6 +71,7 @@
     <Compile Include="States\BaseGameState.cs" />
     <Compile Include="States\Menus\ConfirmRestartState.cs" />
     <Compile Include="States\Menus\BaseMenuState.cs" />
+    <Compile Include="States\Menus\MedalState.cs" />
     <Compile Include="States\Menus\StarState.cs" />
     <Compile Include="States\Menus\RareGemState.cs" />
     <Compile Include="States\Menus\GameOverState.cs" />
@@ -136,6 +137,12 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets\wholegame.blankmask.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\wholegame.medal.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\wholegame.medal.mask.bmp" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -22,7 +22,7 @@ namespace BBot.States
             bHuzzah = false;
 
 
-            //timer = new Timer(new TimerCallback(GameOver), game, 65 * 1000, Timeout.Infinite);
+            
             
         }
 
@@ -35,7 +35,14 @@ namespace BBot.States
 
         public override bool HandleEvents()
         {
-            return base.HandleEvents() || bHuzzah;
+            if (base.HandleEvents() || bHuzzah)
+                return true;
+
+            if (timer == null)
+                timer = new Timer(new TimerCallback(GameOver), game, 65 * 1000, Timeout.Infinite);
+            
+            return false;
+            
         }
 
         public override void Update()
@@ -100,10 +107,20 @@ namespace BBot.States
 
         private void GetBoardFromGame(GameEngine game)
         {
-            lock (game.GameScreenLOCK)
+            if (Monitor.TryEnter(game.GameScreenLOCK,10))
             {
-                bmpBoard = game.GameScreen.Clone(new Rectangle(BoardLocationOnGame, BoardSize), game.GameScreen.PixelFormat);
+                try {
+                     bmpBoard = game.GameScreen.Clone(new Rectangle(BoardLocationOnGame, BoardSize), game.GameScreen.PixelFormat);
+                }
+                finally 
+                {
+                    Monitor.Exit(game.GameScreenLOCK);
+                }
             }
+            //lock (game.GameScreenLOCK)
+            //{
+            //    bmpBoard = game.GameScreen.Clone(new Rectangle(BoardLocationOnGame, BoardSize), game.GameScreen.PixelFormat);
+            //}
         }
 
         private void BuildGemColorStats()
@@ -162,11 +179,11 @@ namespace BBot.States
 
             heatmapCount = 0;
 
-            lock (game.GameScreen)
-            {
-                // Call CreateIntensityMask, give it the memory bitmap, and store the result back in the memory bitmap
-                bmpHeatmap = Heatmap.CreateIntensityMask(game.GameScreen);
-            }
+            //lock (game.GameScreen)
+            //{
+            //    // Call CreateIntensityMask, give it the memory bitmap, and store the result back in the memory bitmap
+            //    bmpHeatmap = Heatmap.CreateIntensityMask(game.GameScreen);
+            //}
             // Colorize the memory bitmap and assign it as the picture boxes image
             bmpHeatmap = Heatmap.Colorize(bmpHeatmap, 255);
 
@@ -336,7 +353,7 @@ namespace BBot.States
 
 
             //if (debugMode)
-            game.Debug(String.Format("Move made: {0},{1} - {2},{3}", new Object[] { x1 - 2, y1 - 2, x2 - 2, y2 - 2 }));
+            //game.Debug(String.Format("Move made: {0},{1} - {2},{3}", new Object[] { x1 - 2, y1 - 2, x2 - 2, y2 - 2 }));
             // debugConsole.AppendText(String.Format("Move made: {0},{1} - {2},{3}", new Object[] { x1 - 2, y1 - 2, x2 - 2, y2 - 2 }) + System.Environment.NewLine);
             if (!game.GameExtents.HasValue)
                 return; // Last minute catch to ensure we have accurate location for mouse clicks

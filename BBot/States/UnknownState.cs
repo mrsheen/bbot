@@ -63,7 +63,7 @@ namespace BBot.States
                 return; // Only every five seconds
             game.Debug("Looking for menus from within unknown state");
             checkCount++;
-            FindBitmap.MatchingPoint match;
+            MatchingPoint match;
 
             // Look for change in screen to signify external action
             if (1==1) //if (bmpPreviousGameScreen != game.BoardScreen)
@@ -121,11 +121,11 @@ namespace BBot.States
 
         public override void Draw()
         {
-            lock (game.GameScreen)
-            {
-                // Save copy of current screen for next time
-                bmpPreviousGameScreen = game.GameScreen;
-            }
+            //lock (game.GameScreen)
+            //{
+            //    // Save copy of current screen for next time
+            //    bmpPreviousGameScreen = game.GameScreen;
+            //}
         }
 
         

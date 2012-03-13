@@ -12,8 +12,7 @@ namespace BBot.States
         {
             AssetName = "wholegame.playnow";
             MinimumConfidence = 200000;
-            matchOffset = new Point(1, 0);
-
+       
             transitionClickOffset.X = 265;
             transitionClickOffset.Y = 365;
 

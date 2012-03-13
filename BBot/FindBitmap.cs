@@ -9,9 +9,11 @@ using AForge.Imaging;
 
 namespace BBot
 {
-    public class FindBitmap
+    public class FindBitmapWorker
     {
         private const bool Debug = true;
+
+        public bool StopRequested = false;
 
         public struct ImageSearchDetails
         {
@@ -32,15 +34,16 @@ namespace BBot
 
 
         public delegate void ImageSearchDelegate(ImageSearchDetails details);
-        public static event ImageSearchDelegate ImageSearchEvent;
+        public event ImageSearchDelegate ImageSearchEvent;
 
-        public static void UpdateCertainty(int searchCertainty, int minimumValue, int maxValue)
+        public void UpdateCertainty(int searchCertainty, int minimumValue, int maxValue)
         {
             double minPercentMark = 10D;
             double scaleFactor = (1 - (1 / minPercentMark)) / Math.Log(maxValue);
             double adjFactor = ((1 / minPercentMark)) - (Math.Log(minimumValue) * scaleFactor);
             double currentValue = (100D * ((Math.Log(searchCertainty) * scaleFactor) + adjFactor));
 
+            currentValue = Math.Max(currentValue, 0);
 
             ImageSearchDetails details = new ImageSearchDetails();
             details.currentValue = currentValue;
@@ -53,7 +56,7 @@ namespace BBot
                 ImageSearchEvent(details);
         }
 
-        public static void UpdateDelta(double seachDelta)
+        public void UpdateDelta(double seachDelta)
         {
             double scaleFactor = (99D / 100);
             double currentValue = (Math.Max(seachDelta, 0) * scaleFactor) + 1D;
@@ -69,7 +72,7 @@ namespace BBot
                 ImageSearchEvent(details);
         }
 
-        public static MatchingPoint FindInScreen(Bitmap bmpSource, Bitmap bmpToFind, Bitmap bmpMask, bool bQuickCheck, int minimumConfidence = int.MaxValue)
+        public MatchingPoint FindInScreen(Bitmap bmpSource, Bitmap bmpToFind, Bitmap bmpMask, bool bQuickCheck, int minimumConfidence = int.MaxValue)
         {
             MatchingPoint match = new MatchingPoint();
             MatchingPoint lastMatch = new MatchingPoint();
@@ -99,6 +102,9 @@ namespace BBot
             // Otherwise check each successive zoom
             foreach (int scale in new int[] { 10, 4, 2, 1 })
             {
+                if (StopRequested)
+                    return match;
+
                 scaleFactor = 1d / scale;
                 // Resize both images to (1 / scale)%
                 bmpSourceScaled = ResizeBitmap(bmpSource, scaleFactor);
@@ -120,7 +126,8 @@ namespace BBot
                 // Find best match at 25%
                 //[x,y] = findwindow2(fullscreen2,gametitle2,x,y,xn,yn,3);
                 match = FindSingleChannelImaging(bmpSourceScaled, bmpToFindScaled, bmpMaskScaled, match, xN, yN, step, scale, bQuickCheck);
-
+                if (StopRequested)
+                    return match;
                 if (bQuickCheck && match.MaxCertaintyDelta < 10)
                     return match; // Bail out, could not find
 
@@ -142,7 +149,7 @@ namespace BBot
 
 
 
-        private static MatchingPoint FindSingleChannelImaging(Bitmap bmpSource, Bitmap bmpToFind, Bitmap bmpMask, MatchingPoint match, int xN, int yN, int stepSize, int scale = 1, bool bQuickCheck = true)
+        private MatchingPoint FindSingleChannelImaging(Bitmap bmpSource, Bitmap bmpToFind, Bitmap bmpMask, MatchingPoint match, int xN, int yN, int stepSize, int scale = 1, bool bQuickCheck = true)
         {
             Subtract subFilter = (bmpMask != null) ? new Subtract(bmpMask) : null;
 
@@ -226,6 +233,9 @@ namespace BBot
                     }
                     //    break;
 
+                    if (StopRequested)
+                        return match;
+                    
                     Bitmap bmpSearchArea = bmpSource.Clone(new Rectangle(x, y, bmpToFind.Width, bmpToFind.Height), bmpToFind.PixelFormat);
 
                     if (subFilter != null)
@@ -304,7 +314,7 @@ namespace BBot
                     int testAvg = (int)((testRed + testGreen + testBlue) / 3);
 
                     testAvg = testAvg * scale * scale;
-                    FindBitmap.UpdateCertainty(testAvg, match.MinimumCertainty, maxValue);
+                    this.UpdateCertainty(testAvg, match.MinimumCertainty, maxValue);
 
 
                     // Work out positioning
@@ -326,7 +336,7 @@ namespace BBot
                     else
                         deltaConfidence = 0;
 
-                    FindBitmap.UpdateDelta(deltaConfidence);
+                    this.UpdateDelta(deltaConfidence);
                     if (testAvg < testMin)
                     { // If smaller than previous min, use new values
                         if (Debug)
@@ -364,7 +374,7 @@ namespace BBot
         }
 
 
-        public static MatchingPoint CheckExactMatch(Bitmap bmpSource, Bitmap bmpToFind, Bitmap bmpMask, int minimumCertainty)
+        public MatchingPoint CheckExactMatch(Bitmap bmpSource, Bitmap bmpToFind, Bitmap bmpMask, int minimumCertainty)
         {
             MatchingPoint match = new MatchingPoint();
 
@@ -449,7 +459,7 @@ namespace BBot
         }
 
 
-        public static MatchingPoint CheckExactMatchReverse(Bitmap bmpSource, Bitmap bmpToFind, Bitmap bmpMask, int minimumCertainty)
+        public MatchingPoint CheckExactMatchReverse(Bitmap bmpSource, Bitmap bmpToFind, Bitmap bmpMask, int minimumCertainty)
         {
             MatchingPoint match = new MatchingPoint();
 
@@ -533,7 +543,7 @@ namespace BBot
 
         }
 
-        private static int CheckMatch(int x, int y, int[,] fullScreen, int[,] gameTitle)
+        private int CheckMatch(int x, int y, int[,] fullScreen, int[,] gameTitle)
         {
             int match = 0;
 
@@ -584,7 +594,7 @@ namespace BBot
 
         }
 
-        private static Bitmap ResizeBitmap(Bitmap bmpSource, double scaleFactor)
+        private Bitmap ResizeBitmap(Bitmap bmpSource, double scaleFactor)
         {
             Bitmap scaled = new Bitmap((int)(bmpSource.Width * scaleFactor), (int)(bmpSource.Height * scaleFactor));
             using (Graphics graphics = Graphics.FromImage(scaled))
@@ -595,15 +605,17 @@ namespace BBot
             return scaled;
         }
 
-        public struct MatchingPoint
-        {
-            public int X;
-            public int Y;
-            public int Certainty;
-            public int MinimumCertainty;
-            public double MaxCertaintyDelta;
-            public bool Confident;
-            public int Resolution;
-        }
+       
+    }
+
+    public struct MatchingPoint
+    {
+        public int X;
+        public int Y;
+        public int Certainty;
+        public int MinimumCertainty;
+        public double MaxCertaintyDelta;
+        public bool Confident;
+        public int Resolution;
     }
 }

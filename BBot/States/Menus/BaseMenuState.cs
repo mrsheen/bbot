@@ -67,7 +67,7 @@ namespace BBot.States
         public override void Update()
         {
 
-            FindBitmap.MatchingPoint match;
+            MatchingPoint match;
 
             findStates.Push(this);
 
@@ -122,11 +122,11 @@ namespace BBot.States
 
         public override void Draw()
         {
-            lock (game.GameScreen)
-            {
-                // Save copy of current screen for next time
-                bmpPreviousGameScreen = game.GameScreen;
-            }
+            //lock (game.GameScreen)
+            //{
+            //    // Save copy of current screen for next time
+            //    bmpPreviousGameScreen = game.GameScreen;
+            //}
         }
 
 

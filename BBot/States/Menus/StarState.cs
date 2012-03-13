@@ -14,8 +14,7 @@ namespace BBot.States
 
             AssetName = "wholegame.star";
             MinimumConfidence = 400000;
-            matchOffset = new Point(0, -2);
-
+            
             transitionClickOffset.X = 210;
             transitionClickOffset.Y = 390;
 
@@ -24,6 +23,7 @@ namespace BBot.States
 
         public override void Update()
         {
+            findStates.Push(new MedalState());
             findStates.Push(new GameOverState());
             base.Update();
         }

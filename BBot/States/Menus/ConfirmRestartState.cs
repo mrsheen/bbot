@@ -13,8 +13,7 @@ namespace BBot.States
 
             AssetName = "wholegame.confirmrestart";
             MinimumConfidence = 300000;
-            matchOffset = new Point(1, 0);
-
+            
             transitionClickOffset.X = 405;
             transitionClickOffset.Y = 260;
 

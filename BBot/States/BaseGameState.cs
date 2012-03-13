@@ -18,16 +18,15 @@ namespace BBot.States
         public string AssetName;
         public int MinimumConfidence;
 
-        public Point matchOffset;
-
         protected bool bStarted = false;
+
+        public bool StopRequested = false;
         
 
         public BaseGameState()
         {
             AssetName = "-none-";
             MinimumConfidence = 1;
-            matchOffset = new Point(0, 0);
         }
 
         public virtual void Init(GameEngine gameRef)
@@ -53,7 +52,10 @@ namespace BBot.States
         public virtual void Cleanup() {
             if (FindThread != null)
             {
-                FindThread.Abort();
+                game.findBitmapWorker.StopRequested = true;
+                StopRequested = true;
+                Thread.Sleep(10);
+                FindThread.Join();
                 FindThread = null;
             }
         }
@@ -64,8 +66,14 @@ namespace BBot.States
 
         public virtual bool HandleEvents()
         {
+            if (StopRequested)
+                return true;
+
             if (game.EventStack.Count > 0)
             {
+                if (StopRequested)
+                    return true;
+
                 GameEvent myEvent = game.EventStack.Pop();
 
 
@@ -74,8 +82,11 @@ namespace BBot.States
                     FindThread = new Thread(new ThreadStart(TryFindState));
                     FindThread.Name = String.Format("FindThread-{0}-{1}", this.AssetName, DateTime.Now);
 
-                    FindThread.Start();
-
+                    try
+                    {
+                        FindThread.Start();
+                    }
+                    catch (Exception) { }
                     return true;
 
                 }
@@ -100,6 +111,9 @@ namespace BBot.States
 
         public void Run()
         {
+            if (StopRequested)
+                return;
+
             if (!bStarted && !game.GameExtents.HasValue)
                 return;
 
@@ -111,31 +125,30 @@ namespace BBot.States
 
         public virtual void Draw() { }
 
-        public FindBitmap.MatchingPoint FindStateFromScreen(bool quickCheck = false)
+        public MatchingPoint FindStateFromScreen(bool quickCheck = false)
         {
             SearchParams search = new SearchParams();
 
             
-            FindBitmap.MatchingPoint match = new FindBitmap.MatchingPoint();
+            MatchingPoint match = new MatchingPoint();
 
             search.UsingGameExtents = false;
             search.MinimumConfidence = this.MinimumConfidence;
             search.QuickCheck = quickCheck;
-
+            if (StopRequested)
+                return match;
             //STEP1: Get image to find and mask(if available)
             search.ToFind = GetBitmapByType(StateBitmapType.RawImage);
+            if (StopRequested)
+                return match;
             search.Mask = GetBitmapByType(StateBitmapType.Mask, search.ToFind.Size, search.ToFind.PixelFormat);
-
+            if (StopRequested)
+                return match;
             //STEP2: Get area of screen to search
             GetSearchAreaBitmap(ref search);
-
+            if (StopRequested)
+                return match;
             //STEP3: Do search
-            if (FindExact(search, ref match))
-                return match;
-
-            if (FindHazy(search, ref match))
-                return match;
-
             if (FindUsingAlternateMasks(search, ref match))
                 return match;
 
@@ -165,30 +178,38 @@ namespace BBot.States
             SmartMask
         }
 
-        private bool FindUsingAlternateMasks(SearchParams search, ref FindBitmap.MatchingPoint match)
+        private bool FindUsingAlternateMasks(SearchParams search, ref MatchingPoint match)
         {
             Stack<StateBitmapType> typesToCheck = new Stack<StateBitmapType>();
-            //typesToCheck.Push(StateBitmapType.Blue);
+            typesToCheck.Push(StateBitmapType.Blue);
             typesToCheck.Push(StateBitmapType.SmartMask);
 
             while (typesToCheck.Count > 0)
             {
+                if (StopRequested)
+                    return false;
                 StateBitmapType maskType = typesToCheck.Pop();
                 search.Mask = GetBitmapByType(maskType, search.ToFind.Size, search.ToFind.PixelFormat);
+                if (StopRequested)
+                    return false;
                 if (FindExact(search, ref match))
                     return true;
+                if (StopRequested)
+                    return false;
                 if (FindHazy(search, ref match))
                     return true;
+                if (StopRequested)
+                    return false;
             }
 
             return false;
         }
 
-        private bool FindExact(SearchParams search, ref FindBitmap.MatchingPoint match)
+        private bool FindExact(SearchParams search, ref MatchingPoint match)
         {
             if (search.QuickCheck && search.SearchArea.Size == search.ToFind.Size)
             {
-                match = FindBitmap.CheckExactMatch(search.SearchArea, search.ToFind, search.Mask, search.MinimumConfidence);
+                match = game.findBitmapWorker.CheckExactMatch(search.SearchArea, search.ToFind, search.Mask, search.MinimumConfidence);
 
                 if (!match.Confident)
                 {
@@ -207,17 +228,17 @@ namespace BBot.States
             return false;
         }
 
-        private bool FindHazy(SearchParams search, ref FindBitmap.MatchingPoint match)
+        private bool FindHazy(SearchParams search, ref MatchingPoint match)
         {
-            match = FindBitmap.FindInScreen(search.SearchArea, search.ToFind, search.Mask, search.QuickCheck, search.MinimumConfidence);
+            match = game.findBitmapWorker.FindInScreen(search.SearchArea, search.ToFind, search.Mask, search.QuickCheck, search.MinimumConfidence);
             if (search.UsingGameExtents && !search.QuickCheck )
             {
-                match.X += (game.GameExtents.Value.X - 20);
-                match.Y += (game.GameExtents.Value.Y - 20);
+                match.X += -20;
+                match.Y += -20;
             }
 
             if (match.Confident)
-                game.UpdateGameExtents(match.X - this.matchOffset.X, match.Y - this.matchOffset.Y);
+                game.UpdateGameExtents(match.X, match.Y);
 
             return match.Confident;
         }
@@ -243,8 +264,18 @@ namespace BBot.States
                             addFilter = new AForge.Imaging.Filters.Add(filterBitmap);
                             addFilter.ApplyInPlace(rootBitmap);
                         }
-                        goto case StateBitmapType.Mask; // farking c#: http://stackoverflow.com/a/174223
+                        goto case StateBitmapType.Blue; // farking c#: http://stackoverflow.com/a/174223
                     case StateBitmapType.Blue:
+                        if (rootBitmap == null)
+                            rootBitmap = GetBitmap("wholegame.blankmask", size, format);
+                        assetName = String.Format("{0}.blue", this.AssetName);
+                        filterBitmap = GetBitmap(assetName, size, format);
+                        if (filterBitmap != null)
+                        {
+                            addFilter = new AForge.Imaging.Filters.Add(filterBitmap);
+                            addFilter.ApplyInPlace(rootBitmap);
+                        }
+                        goto case StateBitmapType.Mask; // farking c#: http://stackoverflow.com/a/174223
                     case StateBitmapType.Mask:
                         // Get area to find
                         if (rootBitmap == null)
@@ -306,17 +337,14 @@ namespace BBot.States
             // Set search bounds to captured area
             Rectangle searchLocation = new Rectangle(0, 0, game.GameScreen.Width, game.GameScreen.Height);
 
+
             if (game.GameExtents.HasValue)
             {// Search in gamescreen if available
                 search.UsingGameExtents = true;
 
                 if (search.QuickCheck)
                 { // Use pre-calculated offsets
-                    if (this.matchOffset != null)
-                    {
-                        searchLocation.X += this.matchOffset.X;
-                        searchLocation.Y += this.matchOffset.Y;
-                    }
+                    
                     searchLocation.Width = search.ToFind.Width;
                     searchLocation.Height = search.ToFind.Height;
 
@@ -329,14 +357,27 @@ namespace BBot.States
                     searchLocation.Height += 40;
                 }
             }
-
+#if DEBUG
+            //searchLocation.Y = -2;
+#endif
             // Copy gamescreen to search area (this will add buffer of black pixels if required
             search.SearchArea = new Bitmap(searchLocation.Width,searchLocation.Height,search.ToFind.PixelFormat);
 
-            using (Graphics g = Graphics.FromImage(search.SearchArea))
+            if (Monitor.TryEnter(game.GameScreenLOCK,1000))
             {
-                g.DrawImage(game.GameScreen, searchLocation.Location); 
+                try
+                {
+                    using (Graphics g = Graphics.FromImage(search.SearchArea))
+                    {
+                        g.DrawImage(game.GameScreen, searchLocation.Location);
+                    }
+                }
+                finally
+                {
+                    Monitor.Exit(game.GameScreenLOCK);
+                }
             }
+
 
         }
 

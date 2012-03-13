@@ -14,11 +14,14 @@ namespace BBot
 
         private const int TickPeriod = 50;
 
-        public Object GameScreenLOCK = new Object();
+        public readonly Object GameScreenLOCK = new Object();
+
+
 
         public Bitmap GameScreen; // Holds the captured area bitmap for each iteration
         private Rectangle ScreenRectangle;
         public Rectangle? GameExtents;
+
 
 
         public Bitmap PreviewScreen; // Holds the preview bitmap for each iteration
@@ -27,6 +30,9 @@ namespace BBot
 
         public Stack<GameEvent> EventStack = new Stack<GameEvent>();
         public GameStateManager StateManager;
+        public FindBitmapWorker findBitmapWorker = new FindBitmapWorker();
+
+        public bool StopRequested = false;
 
         private System.Threading.Timer tickTimer;
 
@@ -42,12 +48,18 @@ namespace BBot
 
             EventStack.Push(new GameEvent(EngineEventType.ENGINE_INIT, null)); // Create engine_init event
 
+
+        }
+
+        public void Start()
+        {
             tickTimer = new Timer(new TimerCallback(GameTick), null, 0, TickPeriod);
         }
 
 
         public void Cleanup()
         {
+            StopRequested = true;
             if (tickTimer != null)
             {
                 tickTimer.Dispose(); // Stop timer
@@ -78,6 +90,8 @@ namespace BBot
         {
             Point newGameLocation = new Point(x, y);
 
+
+
             if (GameExtents.HasValue)
             { // Update known extents, value will be +1/-1 from previous value
                 newGameLocation.X += GameExtents.Value.X;
@@ -97,21 +111,12 @@ namespace BBot
             if (tickTimer == null)
                 return;
             // Game tick, do something
-            if (Monitor.TryEnter(StateManager))
-            {
-                try
-                {
-                    // This gets fired every N seconds in order to perform moves
-                    if (CaptureArea())
-                        return;
-                    
-                    StateManager.Run();
-                }
-                finally
-                {
-                    Monitor.Exit(StateManager);
-                }
-            }
+
+            // This gets fired every N seconds in order to perform moves
+            if (CaptureArea())
+                return;
+
+            StateManager.Run();
 
         }
 
@@ -143,29 +148,13 @@ namespace BBot
 
             return true;
         }
-
-        public FindBitmap.MatchingPoint FindStateFromScreen(Type classType, bool bQuickCheck = false)
-        {
-            BaseGameState state = new UnknownState();
-            try
-            {
-                state = (BaseGameState)Activator.CreateInstance(classType);
-            }
-            catch (Exception)
-            {
-
-            }
-
-            return state.FindStateFromScreen(bQuickCheck);
-        }
-
-
     }
 
     public class GameStateManager
     {
+        public readonly Object StateManagerLOCK = new Object();
         private Stack<BaseGameState> states;
-        
+
         private GameEngine game;
         private Thread RunThread;
 
@@ -178,9 +167,16 @@ namespace BBot
 
         public void Cleanup()
         {
+
+            game.findBitmapWorker.StopRequested = true;
+
             if (RunThread != null)
             {
-                RunThread.Abort();
+                if (states.Count > 0)
+                    states.Peek().StopRequested = true;
+
+
+                RunThread.Join();
                 RunThread = null;
             }
 
@@ -226,22 +222,40 @@ namespace BBot
         }
         public void Run()
         {
-            if (states.Count == 0)
-                return;
-
-            if (states.Peek().HandleEvents())
-                return;
-
-            if (RunThread == null || RunThread.ThreadState == ThreadState.Stopped)
+            if (Monitor.TryEnter(StateManagerLOCK))
             {
-                RunThread = new Thread(new ThreadStart(states.Peek().Run));
-                RunThread.Name = String.Format("RunThread-{0}-{1}", states.Peek().AssetName, DateTime.Now);
+                try
+                {
 
+                    if (states.Count == 0)
+                        return;
+
+                    if (states.Peek().HandleEvents())
+                        return;
+
+                    if (RunThread == null || RunThread.ThreadState == ThreadState.Stopped)
+                    {
+                        RunThread = new Thread(new ThreadStart(states.Peek().Run));
+                        RunThread.Name = String.Format("RunThread-{0}-{1}", states.Peek().AssetName, DateTime.Now);
+
+                    }
+                    if (RunThread.IsAlive)
+                        return;
+
+                    try
+                    {
+
+                        RunThread.Start();
+                    }
+                    catch (Exception) { }
+                }
+                finally
+                {
+                    Monitor.Exit(StateManagerLOCK);
+                }
             }
-            if (RunThread.IsAlive)
-                return;
 
-            RunThread.Start();
+
         }
     }
 
