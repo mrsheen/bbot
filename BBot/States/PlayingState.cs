@@ -51,14 +51,14 @@ namespace BBot.States
                 return; 
 
             GetBoardFromGame(game);
-            ScanGrid(game);
+            ScanGrid();
             DoMoves(game);
         }
 
         public override void Draw()
         {
-            TickDownDelay(game);
-            game.PreviewScreen = bmpHeatmap;
+            //TickDownDelay(game);
+            //game.PreviewScreen = bmpHeatmap;
 
         }
 
@@ -420,18 +420,31 @@ namespace BBot.States
 
         }
 
+        
 
         // Scan the gem Board and capture a coloured pixel from each cell
-        private void ScanGrid(GameEngine game)
+        public void ScanGrid()
         {
+            Color[,] pieceColors = new Color[8, 8];
+            List<double> scores = new List<double>();
+
+            listGemColorStats = new Dictionary<Color, List<double>>();
+            listGemColorStats.Add(Color.Red, new List<double> {238, 27, 56});
+            listGemColorStats.Add(Color.Blue, new List<double> { 16, 124, 218 });
+            listGemColorStats.Add(Color.Green, new List<double> { 48,215,82});
+            listGemColorStats.Add(Color.Yellow, new List<double> {216,187,29 });
+            listGemColorStats.Add(Color.Purple, new List<double> { 155,40,152});
+            listGemColorStats.Add(Color.White, new List<double> { 214, 213, 213 });
+            listGemColorStats.Add(Color.Orange, new List<double> { 228,143,59});
+
             int top = 10;//topOffset;
             int left = 10; //leftOffset;
 
             // Across
-            for (int y = 0; y < GridSize; y++)
+            for (int x = 0; x < GridSize; x++)
             {
                 // Down
-                for (int x = 0; x < GridSize; x++)
+                for (int y = 0; y < GridSize; y++)
                 {
                     int boxLeft = (left + (CellSize * x));
                     int boxTop = (top + (CellSize * y));
@@ -439,21 +452,24 @@ namespace BBot.States
 
                     // Capture a colour from this gem
                     Color PieceColor = bmpBoard.GetPixel(boxLeft, boxTop);
-
+                    
                     // Get image of current gem
                     Rectangle rect = new Rectangle(boxLeft, boxTop, CellSize / 2, CellSize / 2);
                     Bitmap cropped = bmpBoard.Clone(rect, bmpBoard.PixelFormat);
 
                     ImageStatistics stats = new ImageStatistics(cropped);
-
+                    PieceColor = Color.FromArgb(255, (int)stats.Red.Mean, (int)stats.Green.Mean, (int)stats.Blue.Mean);
                     // Calculate best score
                     double bestScore = 255;
                     double curScore = 0;
                     foreach (KeyValuePair<Color, List<double>> item in listGemColorStats)
                     {
-                        curScore = Math.Pow(item.Value[0] / 255 - stats.Red.Mean / 255, 2)
-                            + Math.Pow(item.Value[1] / 255 - stats.Green.Mean / 255, 2)
-                            + Math.Pow(item.Value[2] / 255 - stats.Blue.Mean / 255, 2);
+
+                        curScore = Math.Pow(item.Value[0]-stats.Red.Mean, 2)
+                                 + Math.Pow(item.Value[1]-stats.Green.Mean, 2)
+                                 + Math.Pow(item.Value[2]-stats.Blue.Mean, 2);
+
+
                         if (curScore < bestScore)
                         {
                             PieceColor = item.Key;
@@ -462,12 +478,18 @@ namespace BBot.States
                             if (item.Key == Color.MediumPurple)
                                 PieceColor = Color.Purple;
                             bestScore = curScore;
+
                         }
                     }
-
+                    scores.Add(bestScore);
                     // Store it in the Board matrix at the correct position
                     Board[x + 2, y + 2] = PieceColor;
+                    
+                    Color newColor = Color.FromArgb(255,(int)stats.Red.Mean, (int)stats.Green.Mean, (int)stats.Blue.Mean);
+                    pieceColors[x, y] = newColor;
 
+                    //if (!listGemColorStats.ContainsKey(newColor))
+                        //listGemColorStats.Add(newColor, new List<double> { stats.Red.Mean, stats.Green.Mean, stats.Blue.Mean });
                     /*
                     if (debugMode)
                     {
@@ -486,6 +508,192 @@ namespace BBot.States
                     }*/
                 }
             }
+
+            // Build known averages
+            
+            //RED
+            /*
+             * 
+             *
+             * 0,0 0,2 0,5 0,6
+             * 1,4 1,6
+             * 3,2
+             * 5,2
+             * 6,7
+             */
+
+            List<Tuple<int,int>> redPairs = new List<Tuple<int,int>>();
+
+            redPairs.Add(new Tuple<int,int>(0,0));
+            redPairs.Add(new Tuple<int, int>(0, 2));
+            redPairs.Add(new Tuple<int, int>(0, 5));
+            redPairs.Add(new Tuple<int, int>(0, 6));
+            redPairs.Add(new Tuple<int, int>(1, 3));
+            redPairs.Add(new Tuple<int, int>(1, 5));
+            redPairs.Add(new Tuple<int, int>(3, 2));
+            redPairs.Add(new Tuple<int, int>(5, 2));
+            redPairs.Add(new Tuple<int,int>(6,7));
+
+            //BLUE
+            /*
+             * 
+             *
+             * 1,1 1,2
+             * 2,6 2,7
+             * 3,6
+             * 4,7
+             * 5,0 5,3 5,6
+             * 6,5 6,6
+             * 7,3 7,5
+             */
+
+            List<Tuple<int, int>> bluePairs = new List<Tuple<int, int>>();
+
+            bluePairs.Add(new Tuple<int, int>(1, 1));
+            bluePairs.Add(new Tuple<int, int>(1, 2));
+            bluePairs.Add(new Tuple<int, int>(2, 6));
+            bluePairs.Add(new Tuple<int, int>(2, 7));
+            bluePairs.Add(new Tuple<int, int>(3, 6));
+            bluePairs.Add(new Tuple<int, int>(4, 7));
+            bluePairs.Add(new Tuple<int, int>(5, 0));
+            bluePairs.Add(new Tuple<int, int>(5, 3));
+            bluePairs.Add(new Tuple<int, int>(5, 6));
+            bluePairs.Add(new Tuple<int, int>(6, 5));
+            bluePairs.Add(new Tuple<int, int>(6, 6));
+            bluePairs.Add(new Tuple<int, int>(7, 3));
+            bluePairs.Add(new Tuple<int, int>(7, 5));
+
+
+            //GREEN
+            /*
+             * 
+             *
+             * 0,7
+             * 3,1 3,5
+             * 4,5
+             * 6,4
+             * 7,1
+             */
+
+            List<Tuple<int, int>> greenPairs = new List<Tuple<int, int>>();
+
+            greenPairs.Add(new Tuple<int, int>(0, 7));
+            greenPairs.Add(new Tuple<int, int>(3, 1));
+            greenPairs.Add(new Tuple<int, int>(3, 5));
+            greenPairs.Add(new Tuple<int, int>(4, 5));
+            greenPairs.Add(new Tuple<int, int>(6, 4));
+            greenPairs.Add(new Tuple<int, int>(7, 1));
+
+
+            //YELLOW
+            /*
+             * 0,3
+             * 1,7
+             * 2,1 2,3 2,4
+             * 4,0
+             * 5,5
+             * 6,2
+             * 7,6 7,7
+             */
+
+            List<Tuple<int, int>> yellowPairs = new List<Tuple<int, int>>();
+
+            yellowPairs.Add(new Tuple<int, int>(0, 3));
+            yellowPairs.Add(new Tuple<int, int>(1, 7));
+            yellowPairs.Add(new Tuple<int, int>(2, 1));
+            yellowPairs.Add(new Tuple<int, int>(2, 3));
+            yellowPairs.Add(new Tuple<int, int>(2, 4));
+            yellowPairs.Add(new Tuple<int, int>(4, 0));
+            yellowPairs.Add(new Tuple<int, int>(5, 5));
+            yellowPairs.Add(new Tuple<int, int>(6, 2));
+            yellowPairs.Add(new Tuple<int, int>(7, 6));
+            yellowPairs.Add(new Tuple<int, int>(7, 7));
+
+
+            //PURPLE
+            /*
+             * 1,0 1,4 1,6
+             * 2,0
+             * 4,2 4,6
+             * 7,0 7,2
+             */
+
+            List<Tuple<int, int>> purplePairs = new List<Tuple<int, int>>();
+
+            purplePairs.Add(new Tuple<int, int>(1, 0));
+            purplePairs.Add(new Tuple<int, int>(1, 4));
+            purplePairs.Add(new Tuple<int, int>(1, 6));
+            purplePairs.Add(new Tuple<int, int>(2,0));
+            purplePairs.Add(new Tuple<int, int>(4, 2));
+            purplePairs.Add(new Tuple<int, int>(4, 6));
+            purplePairs.Add(new Tuple<int, int>(7, 0));
+            purplePairs.Add(new Tuple<int, int>(7, 2));
+
+            //WHITE
+            /*
+             * 0,1 
+             * 2,2
+             * 3,3 3,4
+             * 6,1 6,3
+             * 7,4
+             */
+
+            List<Tuple<int, int>> whitePairs = new List<Tuple<int, int>>();
+
+            whitePairs.Add(new Tuple<int, int>(0, 1));
+            whitePairs.Add(new Tuple<int, int>(2, 2));
+            whitePairs.Add(new Tuple<int, int>(3, 3));
+            whitePairs.Add(new Tuple<int, int>(3, 4));
+            whitePairs.Add(new Tuple<int, int>(6, 1));
+            whitePairs.Add(new Tuple<int, int>(6, 3));
+            whitePairs.Add(new Tuple<int, int>(7, 4));
+
+            //ORANGE
+            /*
+             * 0,4 
+             * 2,5
+             * 3,0 3,7
+             * 4,1 4,3 4,4
+             * 5,1 5,4
+             * 6,0
+             */
+
+            List<Tuple<int, int>> orangePairs = new List<Tuple<int, int>>();
+
+            orangePairs.Add(new Tuple<int, int>(0, 4));
+            orangePairs.Add(new Tuple<int, int>(2, 5));
+            orangePairs.Add(new Tuple<int, int>(3, 0));
+            orangePairs.Add(new Tuple<int, int>(3, 7));
+            orangePairs.Add(new Tuple<int, int>(4, 1));
+            orangePairs.Add(new Tuple<int, int>(4, 3));
+            orangePairs.Add(new Tuple<int, int>(4, 4));
+            orangePairs.Add(new Tuple<int, int>(5, 1));
+            orangePairs.Add(new Tuple<int, int>(5, 4));
+            orangePairs.Add(new Tuple<int, int>(6, 0));
+
+
+
+            double rMean = 0;
+            
+            double gMean = 0;
+
+            double bMean = 0;
+
+            foreach (Tuple<int, int> pair in purplePairs)
+            {
+                rMean += pieceColors[pair.Item1,pair.Item2].R;
+                
+                gMean += pieceColors[pair.Item1, pair.Item2].G;
+
+                bMean += pieceColors[pair.Item1, pair.Item2].B;
+            }
+
+            rMean = rMean / purplePairs.Count;
+            gMean = gMean / purplePairs.Count;
+            bMean = bMean / purplePairs.Count;
+            listGemColorStats.Clear();
+            listGemColorStats.Add(Color.Blue, new List<double> { rMean, gMean, bMean });
+
         }
         #endregion
 
