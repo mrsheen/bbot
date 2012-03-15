@@ -17,7 +17,7 @@ namespace BBot.States
             MinimumConfidence = 200000;
 
             BuildGemColorStats();
-            delay = new int[GridSize + 4, GridSize + 4];
+            delay = new int[GridSize + 6, GridSize + 6];
             bmpHeatmap = new Bitmap(BoardSize.Width, BoardSize.Height);
             bHuzzah = false;
 
@@ -48,9 +48,15 @@ namespace BBot.States
         public override void Update()
         {
             if (bHuzzah)
-                return; 
+                return;
+
+            Thread.Sleep(500);
 
             GetBoardFromGame(game);
+
+            if (!bContinue)
+                return;
+
             ScanGrid();
             DoMoves(game);
         }
@@ -64,6 +70,7 @@ namespace BBot.States
 
         #region Private fields
 
+        private bool bContinue = false;
 
         private readonly Size BoardSize = new Size(320, 320); // The size of the Bejeweled gem grid
         private readonly Point BoardLocationOnGame = new Point(175, 54);
@@ -79,7 +86,7 @@ namespace BBot.States
         private Bitmap bmpHeatmap;
         private Bitmap bmpBoard;
 
-        private Color[,] Board = new Color[GridSize + 4, GridSize + 4]; // Matrix to hold the colour present in each grid cell
+        private Gem[,] Board = new Gem[GridSize + 6, GridSize + 6]; // Matrix to hold the colour present in each grid cell
 
 
         //private static List<Color> knownColors = new List<Color>();
@@ -87,7 +94,7 @@ namespace BBot.States
 
         private System.Threading.Timer timer;
 
-        private Dictionary<Color, List<double>> listGemColorStats;
+        private Dictionary<Gem, List<double>> listGemColorStats;
         private static int[,] delay;
         private bool bHuzzah = false;
 
@@ -107,10 +114,14 @@ namespace BBot.States
 
         private void GetBoardFromGame(GameEngine game)
         {
-            if (Monitor.TryEnter(game.GameScreenLOCK,10))
+            bContinue = false;
+            if (Monitor.TryEnter(game.GameScreenLOCK,5000))
             {
                 try {
                      bmpBoard = game.GameScreen.Clone(new Rectangle(BoardLocationOnGame, BoardSize), game.GameScreen.PixelFormat);
+                     if (game.GameScreen == null || bmpBoard == null)
+                         return;
+                     bContinue = true;
                 }
                 finally 
                 {
@@ -123,21 +134,99 @@ namespace BBot.States
             //}
         }
 
+        private enum GemColor
+        {
+            None,
+            White,
+            Purple,
+            Blue,
+            Green,
+            Yellow,
+            Orange,
+            Red
+        }
+
+        private enum GemModifier
+        {
+            None,
+            ExtraColor,
+            Flame,
+            Star,
+            Multiplier,
+            Coin,
+            Background,
+            Hypercube
+        }
+
+        private struct Gem
+        {
+            GemColor Color;
+            GemModifier Modifier;
+            public Gem(GemColor gColor, GemModifier gModifier)
+            {
+                Color = gColor;
+                Modifier = gModifier;
+            }
+
+            public bool Equals(Gem gemCompare)
+            {
+                bool ColorsEqual = false;
+
+                if (gemCompare.Modifier == GemModifier.Hypercube || this.Modifier == GemModifier.Hypercube)
+                    ColorsEqual = true;
+
+                if (gemCompare.Color == this.Color)
+                    ColorsEqual = true;
+
+                if (gemCompare.Modifier == GemModifier.Background || this.Modifier == GemModifier.Background)
+                    ColorsEqual = false;
+
+                if (gemCompare.Color == GemColor.None || this.Color == GemColor.None)
+                    ColorsEqual = false;
+
+                return ColorsEqual;
+            }
+        }
+
         private void BuildGemColorStats()
         {
             //RedMeanB    GreenMeanB    BlueMeanB
-            listGemColorStats = new Dictionary<Color, List<double>>();
-            listGemColorStats.Add(Color.White, new List<double> { 218.79, 218.79, 218.79 });
-            listGemColorStats.Add(Color.Purple, new List<double> { 176.7325, 38.1, 177.2425 });
-            listGemColorStats.Add(Color.Blue, new List<double> { 16.975, 109.5675, 204.7625 });
-            listGemColorStats.Add(Color.Green, new List<double> { 43.06, 214.2775, 75.365 });
-            listGemColorStats.Add(Color.Yellow, new List<double> { 227.01, 197.165, 28 });
-            listGemColorStats.Add(Color.Orange, new List<double> { 238.49, 143.535, 55.7425 });
-            listGemColorStats.Add(Color.Red, new List<double> { 242.855, 31.28, 62.07 });
+            listGemColorStats = new Dictionary<Gem, List<double>>();
+
+            // Original colors
+            listGemColorStats.Add(new Gem(GemColor.White, GemModifier.None) , new List<double> { 218.79, 218.79, 218.79 });
+            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.None), new List<double> { 176.7325, 38.1, 177.2425 });
+            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.None), new List<double> { 16.975, 109.5675, 204.7625 });
+            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.None), new List<double> { 43.06, 214.2775, 75.365 });
+            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.None), new List<double> { 227.01, 197.165, 28 });
+            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.None), new List<double> { 238.49, 143.535, 55.7425 });
+            listGemColorStats.Add(new Gem(GemColor.Red, GemModifier.None), new List<double> { 242.855, 31.28, 62.07 });
+
+            // New colors
+            listGemColorStats.Add(new Gem(GemColor.White, GemModifier.ExtraColor) , new List<double> { 214, 213, 213 });
+            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.ExtraColor), new List<double> { 172, 40, 172 });
+            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.ExtraColor), new List<double> { 16, 124, 218 });
+            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.ExtraColor), new List<double> { 48, 215, 82 });
+            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.ExtraColor), new List<double> { 216, 187, 29 });
+            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.ExtraColor), new List<double> { 228, 143, 59 });
+            listGemColorStats.Add(new Gem(GemColor.Red, GemModifier.ExtraColor), new List<double> { 238, 27, 56 });
+            
+            // Background
+            listGemColorStats.Add(new Gem(GemColor.None, GemModifier.Background), new List<double> { 30,30,30  });
+
+            // Multipliers
+            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.Multiplier), new List<double> { 120,160,200});
+            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.Multiplier), new List<double> { 190,190,100});
+            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.Multiplier), new List<double> { 180,115,180});
+            listGemColorStats.Add(new Gem(GemColor.Red, GemModifier.Multiplier), new List<double> { 190,120,120});
+            listGemColorStats.Add(new Gem(GemColor.White, GemModifier.Multiplier), new List<double> { 180,180,180});
+            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.Multiplier), new List<double> { 200,150,120});
         }
+        
+           
 
         // Check if two colours match
-        private bool MatchColours(Color a, Color b)
+        private bool MatchColours(Gem a, Gem b)
         {
             return (a.Equals(b));
 
@@ -155,16 +244,16 @@ namespace BBot.States
             float fRatio = 1F / MAX_DELAY;
             Heatmap.ClearHeatpoints();
             // Tick for each delay
-            for (int i = 0; i < GridSize + 4; i++)
+            for (int i = 0; i < GridSize + 6; i++)
             {
-                for (int j = 0; j < GridSize + 4; j++)
+                for (int j = 0; j < GridSize + 6; j++)
                 {
                     delay[i, j] = delay[i, j] - 10;// tMove.Interval;
                     if (delay[i, j] < 0)
                         delay[i, j] = 0;
 
-                    iX = CellSize * (i - 2);
-                    iY = CellSize * (j - 2);
+                    iX = CellSize * (i - 3);
+                    iY = CellSize * (j - 3);
                     bIntense = (byte)(delay[i, j] * fRatio * Byte.MaxValue);
                     // Add heat point to heat points list
                     Heatmap.AddHeatpoint(new Heatmap.HeatPoint(iX, iY, bIntense));
@@ -195,10 +284,10 @@ namespace BBot.States
         private void DoMoves(GameEngine game)
         {
             // Across
-            for (int y = 2; y < GridSize + 2; y++)
+            for (int y = 3; y < GridSize + 3; y++)
             {
                 // Down
-                for (int x = 2; x < GridSize + 2; x++)
+                for (int x = 3; x < GridSize + 3; x++)
                 {
                     // x
                     // -
@@ -365,19 +454,24 @@ namespace BBot.States
             startPoint.X += BoardLocationOnGame.X;
             startPoint.Y += BoardLocationOnGame.Y;
 
-            int mouseX1 = startPoint.X + (CellSize * (x1 - 2)) + (CellSize / 2);
-            int mouseY1 = startPoint.Y + (CellSize * (y1 - 2)) + (CellSize / 2);
+            int mouseX1 = startPoint.X + (CellSize * (x1 - 3)) + (CellSize / 2);
+            int mouseY1 = startPoint.Y + (CellSize * (y1 - 3)) + (CellSize / 2);
 
-            int mouseX2 = startPoint.X + (CellSize * (x2 - 2)) + (CellSize / 2);
-            int mouseY2 = startPoint.Y + (CellSize * (y2 - 2)) + (CellSize / 2);
+            int mouseX2 = startPoint.X + (CellSize * (x2 - 3)) + (CellSize / 2);
+            int mouseY2 = startPoint.Y + (CellSize * (y2 - 3)) + (CellSize / 2);
 
+            //SendInputClass.Move(startPoint.X - 90, startPoint.Y + 150);
+            
+            
             //System.Threading.Thread.Sleep(1000);
             SendInputClass.Click(mouseX1, mouseY1);
             //System.Threading.Thread.Sleep(500);
             SendInputClass.Click(mouseX2, mouseY2);
 
+            game.Debug(string.Format("clickX: {0}, clickY: {1}", mouseX1, mouseY1));
+            Thread.Sleep(1500);
 
-            SendInputClass.Move(startPoint.X - 90, startPoint.Y + 150);
+            
             
 
         }
@@ -391,7 +485,7 @@ namespace BBot.States
 
         private void SetDelay(int x, int y, int delayCount)
         {
-            if (x < 0 || y < 0 || x >= GridSize + 4 || y >= GridSize + 4)
+            if (x < 0 || y < 0 || x >= GridSize + 6 || y >= GridSize + 6)
                 return;
 
 
@@ -399,9 +493,9 @@ namespace BBot.States
             double a = -2.0 * dampeningRadius * dampeningRadius / Math.Log(0.00005);
 
             // Tick for each delay
-            for (int i = 0; i < GridSize + 4; i++)
+            for (int i = 0; i < GridSize + 6; i++)
             {
-                for (int j = 0; j < GridSize + 4; j++)
+                for (int j = 0; j < GridSize + 6; j++)
                 {
 
                     double radius = Math.Sqrt(Math.Pow(x - i, 2) + Math.Pow(y - j, 2));
@@ -428,15 +522,6 @@ namespace BBot.States
             Color[,] pieceColors = new Color[8, 8];
             List<double> scores = new List<double>();
 
-            listGemColorStats = new Dictionary<Color, List<double>>();
-            listGemColorStats.Add(Color.Red, new List<double> {238, 27, 56});
-            listGemColorStats.Add(Color.Blue, new List<double> { 16, 124, 218 });
-            listGemColorStats.Add(Color.Green, new List<double> { 48,215,82});
-            listGemColorStats.Add(Color.Yellow, new List<double> {216,187,29 });
-            listGemColorStats.Add(Color.Purple, new List<double> { 172,40,172});
-            listGemColorStats.Add(Color.White, new List<double> { 214, 213, 213 });
-            listGemColorStats.Add(Color.Orange, new List<double> { 228,143,59});
-
             int top = 10;//topOffset;
             int left = 10; //leftOffset;
             string workingPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), DateTime.Now.ToString("hhmm"));
@@ -452,19 +537,21 @@ namespace BBot.States
                     int boxTop = top + (CellSize * y);
 
 
-                    // Capture a colour from this gem
-                    Color PieceColor = bmpBoard.GetPixel(boxLeft, boxTop);
+                    
                     
                     // Get image of current gem
                     Rectangle rect = new Rectangle(boxLeft, boxTop, CellSize / 2, CellSize / 2);
                     Bitmap cropped = bmpBoard.Clone(rect, bmpBoard.PixelFormat);
 
                     ImageStatistics stats = new ImageStatistics(cropped);
-                    PieceColor = Color.FromArgb(255, (int)stats.Red.Mean, (int)stats.Green.Mean, (int)stats.Blue.Mean);
+                    
+                    // Capture a colour from this gem
+                    Gem PieceColor = new Gem(GemColor.None,GemModifier.None); // = Color.FromArgb(255, (int)stats.Red.Mean, (int)stats.Green.Mean, (int)stats.Blue.Mean);
+                    
                     // Calculate best score
                     double bestScore = 255;
                     double curScore = 0;
-                    foreach (KeyValuePair<Color, List<double>> item in listGemColorStats)
+                    foreach (KeyValuePair<Gem, List<double>> item in listGemColorStats)
                     {
 
                         curScore = Math.Pow(item.Value[0]-stats.Red.Mean, 2)
@@ -475,17 +562,13 @@ namespace BBot.States
                         if (curScore < bestScore)
                         {
                             PieceColor = item.Key;
-                            if (item.Key == Color.YellowGreen)
-                                PieceColor = Color.Yellow;
-                            if (item.Key == Color.MediumPurple)
-                                PieceColor = Color.Purple;
                             bestScore = curScore;
 
                         }
                     }
                     scores.Add(bestScore);
                     // Store it in the Board matrix at the correct position
-                    Board[x + 2, y + 2] = PieceColor;
+                    Board[x + 3, y + 3] = PieceColor;
                     
                     Color newColor = Color.FromArgb(255,(int)stats.Red.Mean, (int)stats.Green.Mean, (int)stats.Blue.Mean);
                     pieceColors[x, y] = newColor;
