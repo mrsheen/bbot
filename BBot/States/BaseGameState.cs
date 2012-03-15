@@ -141,9 +141,6 @@ namespace BBot.States
             search.ToFind = GetBitmapByType(StateBitmapType.RawImage);
             if (StopRequested)
                 return match;
-            search.Mask = GetBitmapByType(StateBitmapType.Mask, search.ToFind.Size, search.ToFind.PixelFormat);
-            if (StopRequested)
-                return match;
             //STEP2: Get area of screen to search
             GetSearchAreaBitmap(ref search);
             if (StopRequested)
@@ -183,6 +180,7 @@ namespace BBot.States
             Stack<StateBitmapType> typesToCheck = new Stack<StateBitmapType>();
             typesToCheck.Push(StateBitmapType.Blue);
             typesToCheck.Push(StateBitmapType.SmartMask);
+            typesToCheck.Push(StateBitmapType.Mask);
 
             while (typesToCheck.Count > 0)
             {

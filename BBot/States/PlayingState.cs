@@ -57,7 +57,7 @@ namespace BBot.States
 
         public override void Draw()
         {
-            //TickDownDelay(game);
+            TickDownDelay(game);
             //game.PreviewScreen = bmpHeatmap;
 
         }
@@ -358,7 +358,7 @@ namespace BBot.States
             if (!game.GameExtents.HasValue)
                 return; // Last minute catch to ensure we have accurate location for mouse clicks
 
-
+            
             SetDelay(x1, y1, primaryDelay);
 
             Rectangle startPoint = game.GameExtents.Value;
@@ -433,21 +433,23 @@ namespace BBot.States
             listGemColorStats.Add(Color.Blue, new List<double> { 16, 124, 218 });
             listGemColorStats.Add(Color.Green, new List<double> { 48,215,82});
             listGemColorStats.Add(Color.Yellow, new List<double> {216,187,29 });
-            listGemColorStats.Add(Color.Purple, new List<double> { 155,40,152});
+            listGemColorStats.Add(Color.Purple, new List<double> { 172,40,172});
             listGemColorStats.Add(Color.White, new List<double> { 214, 213, 213 });
             listGemColorStats.Add(Color.Orange, new List<double> { 228,143,59});
 
             int top = 10;//topOffset;
             int left = 10; //leftOffset;
-
+            string workingPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), DateTime.Now.ToString("hhmm"));
+            System.IO.Directory.CreateDirectory(workingPath+"known");
+            System.IO.Directory.CreateDirectory(workingPath + "unknown");
             // Across
             for (int x = 0; x < GridSize; x++)
             {
                 // Down
                 for (int y = 0; y < GridSize; y++)
                 {
-                    int boxLeft = (left + (CellSize * x));
-                    int boxTop = (top + (CellSize * y));
+                    int boxLeft = left + (CellSize * x);
+                    int boxTop = top + (CellSize * y);
 
 
                     // Capture a colour from this gem
@@ -488,8 +490,17 @@ namespace BBot.States
                     Color newColor = Color.FromArgb(255,(int)stats.Red.Mean, (int)stats.Green.Mean, (int)stats.Blue.Mean);
                     pieceColors[x, y] = newColor;
 
-                    //if (!listGemColorStats.ContainsKey(newColor))
-                        //listGemColorStats.Add(newColor, new List<double> { stats.Red.Mean, stats.Green.Mean, stats.Blue.Mean });
+                    string thisPath = string.Format("{0}{1}.bmp", System.IO.Path.Combine(String.Format("{0}{1}", workingPath, listGemColorStats.ContainsKey(PieceColor) ? "known" : "unknown"), "newgem"), newColor.Name);
+
+                    cropped.Save(thisPath);
+
+                    if (!listGemColorStats.ContainsKey(PieceColor))
+                    {
+
+                        listGemColorStats.Add(PieceColor, new List<double> { stats.Red.Mean, stats.Green.Mean, stats.Blue.Mean });
+                        
+                        
+                    }
                     /*
                     if (debugMode)
                     {
@@ -521,7 +532,7 @@ namespace BBot.States
              * 5,2
              * 6,7
              */
-
+            /*
             List<Tuple<int,int>> redPairs = new List<Tuple<int,int>>();
 
             redPairs.Add(new Tuple<int,int>(0,0));
@@ -546,7 +557,7 @@ namespace BBot.States
              * 6,5 6,6
              * 7,3 7,5
              */
-
+            /*
             List<Tuple<int, int>> bluePairs = new List<Tuple<int, int>>();
 
             bluePairs.Add(new Tuple<int, int>(1, 1));
@@ -562,7 +573,7 @@ namespace BBot.States
             bluePairs.Add(new Tuple<int, int>(6, 6));
             bluePairs.Add(new Tuple<int, int>(7, 3));
             bluePairs.Add(new Tuple<int, int>(7, 5));
-
+            */
 
             //GREEN
             /*
@@ -574,7 +585,7 @@ namespace BBot.States
              * 6,4
              * 7,1
              */
-
+            /*
             List<Tuple<int, int>> greenPairs = new List<Tuple<int, int>>();
 
             greenPairs.Add(new Tuple<int, int>(0, 7));
@@ -584,7 +595,7 @@ namespace BBot.States
             greenPairs.Add(new Tuple<int, int>(6, 4));
             greenPairs.Add(new Tuple<int, int>(7, 1));
 
-
+            */
             //YELLOW
             /*
              * 0,3
@@ -595,7 +606,7 @@ namespace BBot.States
              * 6,2
              * 7,6 7,7
              */
-
+            /*
             List<Tuple<int, int>> yellowPairs = new List<Tuple<int, int>>();
 
             yellowPairs.Add(new Tuple<int, int>(0, 3));
@@ -608,7 +619,7 @@ namespace BBot.States
             yellowPairs.Add(new Tuple<int, int>(6, 2));
             yellowPairs.Add(new Tuple<int, int>(7, 6));
             yellowPairs.Add(new Tuple<int, int>(7, 7));
-
+            */
 
             //PURPLE
             /*
@@ -617,7 +628,7 @@ namespace BBot.States
              * 4,2 4,6
              * 7,0 7,2
              */
-
+            /*
             List<Tuple<int, int>> purplePairs = new List<Tuple<int, int>>();
 
             purplePairs.Add(new Tuple<int, int>(1, 0));
@@ -628,7 +639,7 @@ namespace BBot.States
             purplePairs.Add(new Tuple<int, int>(4, 6));
             purplePairs.Add(new Tuple<int, int>(7, 0));
             purplePairs.Add(new Tuple<int, int>(7, 2));
-
+            */
             //WHITE
             /*
              * 0,1 
@@ -637,7 +648,7 @@ namespace BBot.States
              * 6,1 6,3
              * 7,4
              */
-
+            /*
             List<Tuple<int, int>> whitePairs = new List<Tuple<int, int>>();
 
             whitePairs.Add(new Tuple<int, int>(0, 1));
@@ -647,7 +658,7 @@ namespace BBot.States
             whitePairs.Add(new Tuple<int, int>(6, 1));
             whitePairs.Add(new Tuple<int, int>(6, 3));
             whitePairs.Add(new Tuple<int, int>(7, 4));
-
+            */
             //ORANGE
             /*
              * 0,4 
@@ -657,7 +668,7 @@ namespace BBot.States
              * 5,1 5,4
              * 6,0
              */
-
+            /*
             List<Tuple<int, int>> orangePairs = new List<Tuple<int, int>>();
 
             orangePairs.Add(new Tuple<int, int>(0, 4));
@@ -693,7 +704,7 @@ namespace BBot.States
             bMean = bMean / purplePairs.Count;
             listGemColorStats.Clear();
             listGemColorStats.Add(Color.Blue, new List<double> { rMean, gMean, bMean });
-
+            */
         }
         #endregion
 

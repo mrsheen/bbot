@@ -89,6 +89,7 @@ namespace BBot.States
                         SendInputClass.Click(
                             game.GameExtents.Value.X + transitionClickOffset.X,
                             game.GameExtents.Value.Y + transitionClickOffset.Y);
+                        System.Threading.Thread.Sleep(50);
                         SendInputClass.Move(0, 0);
                         // Assume next state
                         game.EventStack.Push(new GameEvent(EngineEventType.CHANGE_MENU, transitionState));
