@@ -5,13 +5,13 @@ Bejeweled Blitz Bot
 
 ## Description
 
-A fork of Mark Ashley Bell's [mab-bbot] repository, which itself is a port of William Henry's [wh-bbot].
+A fork of Mark Ashley Bell's [C# bbot] repository, which itself is a port of William Henry's [Java Bejeweled Bot].
 
-Includes many ideas from Charles Cook [cc-bbot], including the use of AForge.NET for image statistics, an algorithm for efficient full-screen searching of game menus, and a slick solution for unecessary moves using a move dampener.
+Includes many ideas from Charles Cook's [C Bejeweled Blitz Bot], including the use of AForge.NET for image statistics, an algorithm for efficient full-screen searching of game menus, and a slick solution for unecessary moves using a move dampener.
 
-From Mark's [mab-bbot] page
+From Mark's [C# bbot] page
 
-So, this is my attempt at porting William Henry's [wh-bbot] to C#. It's not very efficient yet, and it doesn't currently match special gems, so it occasionally gets 'stuck'. However, it's still a darn sight faster than I am... :)
+So, this is my attempt at porting William Henry's [Java Bejeweled Bot] to C#. It's not very efficient yet, and it doesn't currently match special gems, so it occasionally gets 'stuck'. However, it's still a darn sight faster than I am... :)
 
 ## License
 
@@ -27,9 +27,9 @@ No license attribution was attached
  
  After the game runs for the first time, and finds the location of the game on your screen, the location is cached in a config file on disk (beside the executable). Subsequent runs of the application will try the cached location first, before falling back to a slower pixel-by-pixel match of the entire screen.
 
-## Differences with [mab-bbot]
+## Differences with [C# bbot]
 
-I forked [mab-bbot] to quickly get up to speed with a working program. I have since implemented a number of significant changes to the code structure.
+I forked [C# bbot] to quickly get up to speed with a working program. I have since implemented a number of significant changes to the code structure.
 
  - Move dampening to reduce double move attempts while matching animation completes
  - Color matching is more precise, using the AForge.Net image processing libraries
@@ -39,8 +39,8 @@ I forked [mab-bbot] to quickly get up to speed with a working program. I have si
  - Global Win32 hotkey (Escape) to kill the game engine if it starts misbehaving
  
 
-[mab-bbot]: https://github.com/markashleybell/bbot "C# Bejeweled Bot"
-[wh-bbot]: http://mytopcoder.com/BejeweledBot "Java Bejeweled Bot"
-[cc-bbot]: http://www.charlesrcook.com/archive/2010/09/05/creating-a-bejeweled-blitz-bot-in-c.aspx "Creating a bejeweled blitz bot in c"
+[C# bbot]: https://github.com/markashleybell/bbot "C# Bejeweled Bot"
+[Java Bejeweled Bot]: http://mytopcoder.com/BejeweledBot "Java Bejeweled Bot"
+[C Bejeweled Blitz Bot]: http://www.charlesrcook.com/archive/2010/09/05/creating-a-bejeweled-blitz-bot-in-c.aspx "Creating a bejeweled blitz bot in c"
 
 [mrsheen-bbot]: https://github.com/mrsheen/bbot "bejeweled-blitz-bot"
