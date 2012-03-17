@@ -49,6 +49,8 @@
             this.TopMost = true;
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.MouseClick += new System.Windows.Forms.MouseEventHandler(this.CaptureForm_MouseClick);
+            this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.CaptureForm_MouseDown);
+            this.MouseUp += new System.Windows.Forms.MouseEventHandler(this.CaptureForm_MouseUp);
             this.ResumeLayout(false);
 
         }

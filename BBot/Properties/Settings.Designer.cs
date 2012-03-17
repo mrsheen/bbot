@@ -22,5 +22,29 @@ namespace BBot.Properties {
                 return defaultInstance;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0, 0")]
+        public global::System.Drawing.Point GameExtents {
+            get {
+                return ((global::System.Drawing.Point)(this["GameExtents"]));
+            }
+            set {
+                this["GameExtents"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0, 0")]
+        public global::System.Drawing.Size GameSize {
+            get {
+                return ((global::System.Drawing.Size)(this["GameSize"]));
+            }
+            set {
+                this["GameSize"] = value;
+            }
+        }
     }
 }

@@ -68,6 +68,7 @@
     <Compile Include="Mouse.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Settings.cs" />
     <Compile Include="States\BaseGameState.cs" />
     <Compile Include="States\Menus\ConfirmRestartState.cs" />
     <Compile Include="States\Menus\BaseMenuState.cs" />

@@ -66,20 +66,22 @@ namespace BBot
             //this.preview.Image = Image.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("BBot.Assets.Instruction.bmp"));
             ckbDebug.Checked = Convert.ToBoolean(ConfigurationManager.AppSettings["DebugMode"]);
 
-            InitGameEngine(); // Start manually
+            InitGameEngine(Screen.PrimaryScreen.Bounds); // Start manually
 
         }
 
-        private void InitGameEngine()
+        private void InitGameEngine(Rectangle screenBounds)
         {
             DebugMessage("Initializing game engine");
             //gameEngine = new GameEngine(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
-            gameEngine = new GameEngine(Screen.AllScreens[1].Bounds);
+            gameEngine = new GameEngine(screenBounds);
 
             //System.IO.Directory.CreateDirectory(workingPath);
 
             gameEngine.DebugEvent += DebugMessage;
             gameEngine.findBitmapWorker.ImageSearchEvent += ImageSearch;
+
+            preview.Image = gameEngine.GameScreen;
 
             playButton.Enabled = true;
 
@@ -115,6 +117,7 @@ namespace BBot
         }
 
         private readonly object PlotDetailsLOCK = new Object();
+        private DateTime imageSnapshotTimestamp = DateTime.Now;
         private void UpdateDisplay_tick(object sender, EventArgs e)
         {
             lock (PlotDetailsLOCK)
@@ -141,10 +144,49 @@ namespace BBot
 
             }
 
-            //lock (gameEngine.GameScreen)
-            //{
-            //    //preview.Image = gameEngine.GameScreen.Clone(new Rectangle(0, 0, gameEngine.GameScreen.Width, gameEngine.GameScreen.Height), gameEngine.GameScreen.PixelFormat);
-            //}
+            if ((DateTime.Now - imageSnapshotTimestamp).Seconds < 5)
+                return; // Only update image every 5 seconds
+
+            Bitmap newImage = new Bitmap(1, 1);
+            if (Monitor.TryEnter(gameEngine.GameScreenLOCK))
+            {
+                try
+                {
+                    newImage = gameEngine.GameScreen.Clone(new Rectangle(0, 0, gameEngine.GameScreen.Width, gameEngine.GameScreen.Height), gameEngine.GameScreen.PixelFormat);
+                }
+                finally
+                {
+                    Monitor.Exit(gameEngine.GameScreenLOCK);
+                }
+            }
+
+            if (newImage.Width != 0)
+            { // resize and show
+
+                // Prevent using images internal thumbnail
+                newImage.RotateFlip(System.Drawing.RotateFlipType.Rotate180FlipNone);
+                newImage.RotateFlip(System.Drawing.RotateFlipType.Rotate180FlipNone);
+
+                int newWidth = preview.Width;
+
+                if (newImage.Width <= newWidth)
+                {
+                    newWidth = newImage.Width;
+                }
+
+                int newHeight = newImage.Height * newWidth / newImage.Width;
+                if (newHeight > preview.Height)
+                {
+                    // Resize with height instead
+                    newWidth = newImage.Width * preview.Height / newImage.Height;
+                    newHeight = preview.Height;
+                }
+
+                preview.Image = newImage.GetThumbnailImage(newWidth, newHeight, null, IntPtr.Zero);
+                imageSnapshotTimestamp = DateTime.Now;
+                // Clear handle to original file so that we can overwrite it if necessary
+                newImage.Dispose();
+            }
         }
 
         private readonly object DebugMessagesLOCK = new Object();
@@ -311,7 +353,7 @@ namespace BBot
         private void StartGame()
         {
             if (gameEngine == null)
-                InitGameEngine();
+                InitGameEngine(Screen.PrimaryScreen.Bounds);
 
 
             if (selectedState != null)
@@ -345,6 +387,8 @@ namespace BBot
             states.Add("Play Now", typeof(States.PlayNowState));
             states.Add("Rare Gem", typeof(States.RareGemState));
             states.Add("Star Award", typeof(States.StarState));
+            states.Add("Medal", typeof(States.MedalState));
+
 
             foreach (KeyValuePair<String, Type> state in states)
             {
@@ -366,6 +410,70 @@ namespace BBot
 
             if (states.TryGetValue(item.Text, out selectedState))
                 StartGame();
+        }
+
+        List<CaptureForm> captureForms = new List<CaptureForm>();
+        private void findGameScreenToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (gameEngine != null)
+                KillGameEngine();
+
+            foreach (Screen screen in Screen.AllScreens)
+            {
+                if (screen.Primary) // DEBUG
+                    continue;
+
+                CaptureForm cf = new CaptureForm();
+                cf.StartPosition = FormStartPosition.Manual;
+                cf.Bounds = screen.Bounds;
+                cf.WindowState = FormWindowState.Maximized;
+                cf.FormClosed += new FormClosedEventHandler(CaptureForm_Closed);
+
+                cf.Show();
+
+                captureForms.Add(cf);
+
+            }
+
+        }
+
+        private void CaptureForm_Closed(object sender, FormClosedEventArgs e)
+        {
+            CaptureForm cf = (CaptureForm)sender;
+
+            if (cf.DialogResult == System.Windows.Forms.DialogResult.OK)
+            {
+                Rectangle screenBounds = cf.Bounds;
+
+
+                Rectangle searchArea;
+
+                if (cf.GameBounds.HasValue)
+                    searchArea = cf.GameBounds.Value;
+                else if (cf.GameCoordinate.HasValue)
+                    searchArea = new Rectangle(cf.GameCoordinate.Value, new Size(screenBounds.Width - cf.GameCoordinate.Value.X, screenBounds.Height - cf.GameCoordinate.Value.Y));
+                else
+                    searchArea = new Rectangle(0, 0, 0, 0); // nothing set
+
+
+                foreach (CaptureForm form in captureForms)
+                {
+                    form.DialogResult = System.Windows.Forms.DialogResult.Abort;
+                    form.Dispose();
+                }
+
+                captureForms.Clear();
+
+                if (gameEngine != null)
+                    return;
+
+
+
+                InitGameEngine(screenBounds);
+                gameEngine.UpdateSuggestedSearch(searchArea, true);
+                gameEngine.CaptureArea();
+
+            }
         }
 
 

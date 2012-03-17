@@ -34,7 +34,8 @@ namespace BBot
 {
     public partial class CaptureForm : Form
     {
-        public Point Coordinate { get; set; }
+        public Point? GameCoordinate {get;set;}
+        public Rectangle? GameBounds {get; set;}
 
         public CaptureForm()
         {
@@ -43,9 +44,38 @@ namespace BBot
 
         private void CaptureForm_MouseClick(object sender, MouseEventArgs e)
         {
-            this.Coordinate = e.Location;
+            if (GameBounds.HasValue && Math.Abs(GameBounds.Value.X - e.X) > 50)
+                return;
+            this.GameCoordinate = e.Location;
+            this.GameBounds = null;
             DialogResult = DialogResult.OK;
-            Dispose();
+            Close();
+        }
+
+        private void CaptureForm_MouseDown(object sender, MouseEventArgs e)
+        {
+            this.GameBounds = new Rectangle(e.Location.X,e.Location.Y,0,0);
+        }
+
+        private void CaptureForm_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (!GameBounds.HasValue)
+                return;
+
+            Rectangle bounds = GameBounds.Value;
+            
+            bounds.Width = Math.Abs(bounds.X - e.X);
+            bounds.Height = Math.Abs(bounds.Y - e.Y);
+
+            // Swap x,y if top-left
+            bounds.X = Math.Min(bounds.X, e.X);
+            bounds.Y = Math.Min(bounds.Y, e.Y);
+
+            this.GameBounds = bounds;
+
+            DialogResult = DialogResult.OK;
+            Close();
+
         }
     }
 }
