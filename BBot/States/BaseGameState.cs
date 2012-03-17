@@ -227,8 +227,8 @@ namespace BBot.States
                     {
                         if (game.DebugMode)
                         {
-                            string path = String.Format("{0}-notmatched-{1}-{2}.bmp", Assembly.GetCallingAssembly().Location, this.AssetName, DateTime.Now.ToString("hhmmss"));
-                            search.SearchArea.Save(path);
+                            //string path = String.Format("{0}-notmatched-{1}-{2}.bmp", Assembly.GetCallingAssembly().Location, this.AssetName, DateTime.Now.ToString("hhmmss"));
+                            //search.SearchArea.Save(path);
                         }
                     }
                     catch (Exception)

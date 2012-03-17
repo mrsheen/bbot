@@ -108,7 +108,7 @@ namespace BBot.States
 
         private System.Threading.Timer timer;
 
-        private Dictionary<Gem, List<double>> listGemColorStats;
+        private List<Gem> listGemColorStats;
         private static int[,] delay;
         private bool bHuzzah = false;
 
@@ -160,42 +160,45 @@ namespace BBot.States
             Red
         }
 
+        [Flags]
         private enum GemModifier
         {
-            None,
-            ExtraColor,
-            Flame,
-            Star,
-            Multiplier,
-            Coin,
-            Background,
-            Hypercube
+            None = 0,
+            ExtraColor = 2,
+            Flame = 4,
+            Star = 8,
+            Multiplier = 16,
+            Coin = 32,
+            Background = 64,
+            Hypercube = 128
         }
 
         private struct Gem
         {
-            public GemColor Color;
-            public GemModifier Modifier;
-            public Gem(GemColor gColor, GemModifier gModifier)
+            public GemColor Name;
+            public GemModifier Modifiers;
+            public Color Color;
+            public Gem(GemColor gName, GemModifier gModifiers, Color gColor)
             {
+                Name = gName;
+                Modifiers = gModifiers;
                 Color = gColor;
-                Modifier = gModifier;
             }
 
             public bool Equals(Gem gemCompare)
             {
                 bool ColorsEqual = false;
 
-                if (gemCompare.Modifier == GemModifier.Hypercube || this.Modifier == GemModifier.Hypercube)
+                if (gemCompare.Modifiers.HasFlag(GemModifier.Hypercube) || this.Modifiers.HasFlag(GemModifier.Hypercube))
                     ColorsEqual = true;
 
-                if (gemCompare.Color == this.Color)
+                if (gemCompare.Name == this.Name)
                     ColorsEqual = true;
 
-                if (gemCompare.Modifier == GemModifier.Background || this.Modifier == GemModifier.Background)
+                if (gemCompare.Modifiers.HasFlag(GemModifier.Background) || this.Modifiers.HasFlag(GemModifier.Background))
                     ColorsEqual = false;
 
-                if (gemCompare.Color == GemColor.None || this.Color == GemColor.None)
+                if (gemCompare.Name == GemColor.None || this.Name == GemColor.None)
                     ColorsEqual = false;
 
                 return ColorsEqual;
@@ -205,36 +208,68 @@ namespace BBot.States
         private void BuildGemColorStats()
         {
             //RedMeanB    GreenMeanB    BlueMeanB
-            listGemColorStats = new Dictionary<Gem, List<double>>();
+            listGemColorStats = new List<Gem>();
 
             // Original colors
-            listGemColorStats.Add(new Gem(GemColor.White, GemModifier.None) , new List<double> { 218.79, 218.79, 218.79 });
-            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.None), new List<double> { 176.7325, 38.1, 177.2425 });
-            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.None), new List<double> { 16.975, 109.5675, 204.7625 });
-            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.None), new List<double> { 43.06, 214.2775, 75.365 });
-            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.None), new List<double> { 227.01, 197.165, 28 });
-            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.None), new List<double> { 238.49, 143.535, 55.7425 });
-            listGemColorStats.Add(new Gem(GemColor.Red, GemModifier.None), new List<double> { 242.855, 31.28, 62.07 });
+            listGemColorStats.Add(new Gem(GemColor.White, GemModifier.None, Color.FromArgb(122, 122, 122 )));
 
-            // New colors
-            listGemColorStats.Add(new Gem(GemColor.White, GemModifier.ExtraColor) , new List<double> { 214, 213, 213 });
-            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.ExtraColor), new List<double> { 172, 40, 172 });
-            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.ExtraColor), new List<double> { 16, 124, 218 });
-            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.ExtraColor), new List<double> { 48, 215, 82 });
-            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.ExtraColor), new List<double> { 216, 187, 29 });
-            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.ExtraColor), new List<double> { 228, 143, 59 });
-            listGemColorStats.Add(new Gem(GemColor.Red, GemModifier.ExtraColor), new List<double> { 238, 27, 56 });
+            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.None, Color.FromArgb( 119, 26, 119 )));
+            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.None, Color.FromArgb(105, 26, 105)));
+            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.None, Color.FromArgb(119, 80, 119)));
             
+            
+            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.None, Color.FromArgb(136, 96,42)));
+            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.None, Color.FromArgb(130, 82, 34)));
+
+
+            listGemColorStats.Add(new Gem(GemColor.Red, GemModifier.None, Color.FromArgb( 130, 15, 31 )));
+
+            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.None, Color.FromArgb(136, 122, 18)));
+            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.None, Color.FromArgb(106, 90, 10)));
+            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.Coin, Color.FromArgb(113, 98, 26)));;
+
+
+
+            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.None, Color.FromArgb(1, 117, 27)));
+            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.None, Color.FromArgb(0, 79, 7)));
+            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.None, Color.FromArgb(29, 118, 48)));
+            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.None, Color.FromArgb(40, 114, 59)));
+            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.None, Color.FromArgb(10, 96, 13)));
+
+            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.None, Color.FromArgb(30, 7, 116)));
+            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.None, Color.FromArgb(4, 60, 116)));
+            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.None, Color.FromArgb(7, 70, 130)));
+            /*
+            listGemColorStats.Add(new Gem(GemColor.White, GemModifier.None) , Color.FromArgb( 214, 213, 213 )));
+            
+            
+            
+            
+            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.None, Color.FromArgb( 228, 143, 59 )));
+            listGemColorStats.Add(new Gem(GemColor.Red, GemModifier.None, Color.FromArgb( 238, 27, 56 )));*/
+
             // Background
-            listGemColorStats.Add(new Gem(GemColor.None, GemModifier.Background), new List<double> { 30,30,30  });
+            listGemColorStats.Add(new Gem(GemColor.None, GemModifier.Background, Color.FromArgb( 30,30,30  )));
+            listGemColorStats.Add(new Gem(GemColor.None, GemModifier.Background, Color.FromArgb(40, 40, 40)));
+            listGemColorStats.Add(new Gem(GemColor.None, GemModifier.Background, Color.FromArgb(59, 47, 44)));
 
             // Multipliers
-            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.Multiplier), new List<double> { 120,160,200});
-            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.Multiplier), new List<double> { 190,190,100});
-            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.Multiplier), new List<double> { 180,115,180});
-            listGemColorStats.Add(new Gem(GemColor.Red, GemModifier.Multiplier), new List<double> { 190,120,120});
-            listGemColorStats.Add(new Gem(GemColor.White, GemModifier.Multiplier), new List<double> { 180,180,180});
-            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.Multiplier), new List<double> { 200,150,120});
+            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.Multiplier, Color.FromArgb( 65, 86, 104 )));
+            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.Multiplier, Color.FromArgb( 104,81,65)));
+            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.Multiplier, Color.FromArgb(61, 97, 63)));
+            /*
+            
+            
+            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.Multiplier, Color.FromArgb( 190,190,100)));
+            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.Multiplier, Color.FromArgb( 180,115,180)));
+            listGemColorStats.Add(new Gem(GemColor.Red, GemModifier.Multiplier, Color.FromArgb( 190,120,120)));
+            listGemColorStats.Add(new Gem(GemColor.White, GemModifier.Multiplier, Color.FromArgb( 180,180,180)));
+            */
+
+            listGemColorStats.Add(new Gem(GemColor.None, GemModifier.None, Color.FromArgb(136, 136, 136)));
+            listGemColorStats.Add(new Gem(GemColor.None, GemModifier.None, Color.FromArgb(140, 140, 140)));
+
+
         }
         
            
@@ -595,23 +630,23 @@ namespace BBot.States
                     ImageStatistics stats = new ImageStatistics(cropped);
                     
                     // Capture a colour from this gem
-                    Gem PieceColor = new Gem(GemColor.None,GemModifier.None); // = Color.FromArgb(255, (int)stats.Red.Mean, (int)stats.Green.Mean, (int)stats.Blue.Mean);
+                    Gem PieceColor = new Gem(GemColor.None,GemModifier.None, Color.FromArgb(255, (int)stats.Red.Mean, (int)stats.Green.Mean, (int)stats.Blue.Mean));
                     
                     // Calculate best score
-                    double bestScore = 255;
+                    double bestScore = 255*3;
                     double curScore = 0;
                     
-                    foreach (KeyValuePair<Gem, List<double>> item in listGemColorStats)
+                    foreach (Gem gem in listGemColorStats)
                     {
 
-                        curScore = Math.Pow(item.Value[0]-stats.Red.Mean, 2)
-                                 + Math.Pow(item.Value[1]-stats.Green.Mean, 2)
-                                 + Math.Pow(item.Value[2]-stats.Blue.Mean, 2);
+                        curScore = Math.Pow(gem.Color.R-stats.Red.Mean, 2)
+                                 + Math.Pow(gem.Color.G-stats.Green.Mean, 2)
+                                 + Math.Pow(gem.Color.B-stats.Blue.Mean, 2);
 
 
                         if (curScore < bestScore)
                         {
-                            PieceColor = item.Key;
+                            PieceColor = gem;
                             bestScore = curScore;
 
                         }
@@ -626,18 +661,18 @@ namespace BBot.States
                     if (game.DebugMode)
                     {
                         string colorName = string.Format("_{0}_{1}_{2}_", (int)newColor.R, (int)newColor.G, (int)newColor.B);
-                        string gemName = string.Format("{0}.{1}", PieceColor.Color, PieceColor.Modifier);
-                        string basePath = System.IO.Path.Combine(String.Format("{0}{1}", workingPath, listGemColorStats.ContainsKey(PieceColor) ? "known" : "unknown"),gemName);
+                        string gemName = string.Format("{0}.{1}", PieceColor.Name, PieceColor.Modifiers);
+                        string basePath = System.IO.Path.Combine(String.Format("{0}{1}", workingPath, listGemColorStats.Contains(PieceColor) ? "known" : "unknown"),gemName);
                         
                         string thisPath = string.Format("{0}{1}.bmp", basePath, colorName);
 
-                        cropped.Save(thisPath);
+                        //cropped.Save(thisPath);
                     }
 
-                    if (!listGemColorStats.ContainsKey(PieceColor))
+                    if (!listGemColorStats.Contains(PieceColor))
                     {
 
-                        //listGemColorStats.Add(PieceColor, new List<double> { stats.Red.Mean, stats.Green.Mean, stats.Blue.Mean });
+                        //listGemColorStats.Add(PieceColor, Color.FromArgb( stats.Red.Mean, stats.Green.Mean, stats.Blue.Mean });
                         
                         
                     }
@@ -843,7 +878,7 @@ namespace BBot.States
             gMean = gMean / purplePairs.Count;
             bMean = bMean / purplePairs.Count;
             listGemColorStats.Clear();
-            listGemColorStats.Add(Color.Blue, new List<double> { rMean, gMean, bMean });
+            listGemColorStats.Add(Color.Blue, Color.FromArgb( rMean, gMean, bMean });
             */
         }
         #endregion
