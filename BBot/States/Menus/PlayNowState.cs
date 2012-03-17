@@ -5,7 +5,7 @@ using System.Drawing;
 
 namespace BBot.States
 {
-    public partial class PlayNowState : BaseMenuState
+    public class PlayNowState : BaseMenuState
     {
 
         public PlayNowState()

@@ -5,7 +5,7 @@ using System.Drawing;
 
 namespace BBot.States
 {
-    public partial class UnknownState : BaseGameState
+    public class UnknownState : BaseGameState
     {
         public UnknownState()
         {
@@ -26,7 +26,7 @@ namespace BBot.States
 
             bmpPreviousGameScreen = new Bitmap(1, 1);
             previousTimestamp = DateTime.Now.AddMilliseconds(-5001);
-            checkCount = 0;
+            checkCount = 3;
 
             // Manually override start flag
             bStarted = true;
@@ -45,11 +45,6 @@ namespace BBot.States
                     return true;
                 }
 
-                if (myEvent.eventType == EngineEventType.START_PLAYING)
-                {
-                    game.StateManager.PushState(new PlayingState());
-                    return true;
-                }
 
             }
             return false;

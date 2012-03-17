@@ -355,9 +355,7 @@ namespace BBot.States
                     searchLocation.Height += 40;
                 }
             }
-#if DEBUG
-            //searchLocation.Y = -2;
-#endif
+
             // Copy gamescreen to search area (this will add buffer of black pixels if required
             search.SearchArea = new Bitmap(searchLocation.Width,searchLocation.Height,search.ToFind.PixelFormat);
 

@@ -38,14 +38,15 @@ namespace BBot.States
 
                 if (myEvent.eventType == EngineEventType.CHANGE_MENU)
                 {
-                    game.StateManager.PushState((BaseGameState)myEvent.parameters);
+                    game.StateManager.ChangeState((BaseGameState)myEvent.parameters);
                     return true;
                 }
 
 
                 if (myEvent.eventType == EngineEventType.RESUME_PLAYING)
                 {
-                    game.StateManager.PushState(new PlayingState());
+
+                    game.StateManager.ChangeState((BaseGameState)myEvent.parameters);
                     return true;
                 }
 
@@ -72,6 +73,7 @@ namespace BBot.States
             findStates.Push(this);
 
             game.Debug("Looking for states from " + this.AssetName);
+            game.Debug("Other states: " + findStates.Count);
             
 
             while (findStates.Count > 0)
@@ -89,7 +91,7 @@ namespace BBot.States
                         SendInputClass.Click(
                             game.GameExtents.Value.X + transitionClickOffset.X,
                             game.GameExtents.Value.Y + transitionClickOffset.Y);
-                        System.Threading.Thread.Sleep(2000);
+                        System.Threading.Thread.Sleep(200);
                         SendInputClass.Move(0, 0);
                         // Assume next state
                         game.EventStack.Push(new GameEvent(EngineEventType.CHANGE_MENU, transitionState));
@@ -109,7 +111,7 @@ namespace BBot.States
             if (match.Confident)
             {
                 // Started playing
-                game.EventStack.Push(new GameEvent(EngineEventType.RESUME_PLAYING, null));
+                game.EventStack.Push(new GameEvent(EngineEventType.RESUME_PLAYING, playingState));
                 game.Debug("Playingstate found");
                 return;
             }

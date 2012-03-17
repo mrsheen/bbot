@@ -5,7 +5,7 @@ using System.Drawing;
 
 namespace BBot.States
 {
-    public partial class RareGemState : BaseMenuState
+    public class RareGemState : BaseMenuState
     {
 
 
@@ -15,7 +15,7 @@ namespace BBot.States
             MinimumConfidence = 300000;
 
             transitionClickOffset.X = 210;
-            transitionClickOffset.Y  = 390;
+            transitionClickOffset.Y = 390;
 
             transitionState = new PlayNowState();
         }

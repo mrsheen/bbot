@@ -39,7 +39,10 @@ namespace BBot.States
                 return true;
 
             if (timer == null)
+            {
+                Thread.Sleep(500);
                 timer = new Timer(new TimerCallback(GameOver), game, 65 * 1000, Timeout.Infinite);
+            }
             
             return false;
             
@@ -50,7 +53,7 @@ namespace BBot.States
             if (bHuzzah)
                 return;
 
-            Thread.Sleep(500);
+            
 
             GetBoardFromGame(game);
 
@@ -115,7 +118,7 @@ namespace BBot.States
         private void GetBoardFromGame(GameEngine game)
         {
             bContinue = false;
-            if (Monitor.TryEnter(game.GameScreenLOCK,5000))
+            if (Monitor.TryEnter(game.GameScreenLOCK,20))
             {
                 try {
                      bmpBoard = game.GameScreen.Clone(new Rectangle(BoardLocationOnGame, BoardSize), game.GameScreen.PixelFormat);
@@ -256,9 +259,11 @@ namespace BBot.States
                     iY = CellSize * (j - 3);
                     bIntense = (byte)(delay[i, j] * fRatio * Byte.MaxValue);
                     // Add heat point to heat points list
-                    Heatmap.AddHeatpoint(new Heatmap.HeatPoint(iX, iY, bIntense));
+                    //Heatmap.AddHeatpoint(new Heatmap.HeatPoint(iX, iY, bIntense));
                 }
             }
+
+            return;
 
             if (heatmapCount < HEATMAP_UPDATE)
             {
@@ -460,7 +465,7 @@ namespace BBot.States
             int mouseX2 = startPoint.X + (CellSize * (x2 - 3)) + (CellSize / 2);
             int mouseY2 = startPoint.Y + (CellSize * (y2 - 3)) + (CellSize / 2);
 
-            //SendInputClass.Move(startPoint.X - 90, startPoint.Y + 150);
+            
             
             
             //System.Threading.Thread.Sleep(1000);
@@ -469,9 +474,9 @@ namespace BBot.States
             SendInputClass.Click(mouseX2, mouseY2);
 
             game.Debug(string.Format("clickX: {0}, clickY: {1}", mouseX1, mouseY1));
-            Thread.Sleep(1500);
+            //Thread.Sleep(1500);
 
-            
+            SendInputClass.Move(startPoint.X - 90, startPoint.Y + 150);
             
 
         }
@@ -573,14 +578,14 @@ namespace BBot.States
                     Color newColor = Color.FromArgb(255,(int)stats.Red.Mean, (int)stats.Green.Mean, (int)stats.Blue.Mean);
                     pieceColors[x, y] = newColor;
 
-                    string thisPath = string.Format("{0}{1}.bmp", System.IO.Path.Combine(String.Format("{0}{1}", workingPath, listGemColorStats.ContainsKey(PieceColor) ? "known" : "unknown"), "newgem"), newColor.Name);
+                    //string thisPath = string.Format("{0}{1}.bmp", System.IO.Path.Combine(String.Format("{0}{1}", workingPath, listGemColorStats.ContainsKey(PieceColor) ? "known" : "unknown"), "newgem"), newColor.Name);
 
-                    cropped.Save(thisPath);
+                    //cropped.Save(thisPath);
 
                     if (!listGemColorStats.ContainsKey(PieceColor))
                     {
 
-                        listGemColorStats.Add(PieceColor, new List<double> { stats.Red.Mean, stats.Green.Mean, stats.Blue.Mean });
+                        //listGemColorStats.Add(PieceColor, new List<double> { stats.Red.Mean, stats.Green.Mean, stats.Blue.Mean });
                         
                         
                     }

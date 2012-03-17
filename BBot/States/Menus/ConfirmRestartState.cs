@@ -6,7 +6,7 @@ using System.Drawing;
 namespace BBot.States
 {
 
-    public partial class ConfirmRestartState : BaseMenuState
+    public class ConfirmRestartState : BaseMenuState
     {
         public ConfirmRestartState()
         {

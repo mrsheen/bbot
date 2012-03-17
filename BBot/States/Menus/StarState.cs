@@ -5,7 +5,7 @@ using System.Drawing;
 
 namespace BBot.States
 {
-    public partial class StarState : BaseMenuState
+    public class StarState : BaseMenuState
     {
 
 
