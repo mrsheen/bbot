@@ -33,14 +33,19 @@ namespace BBot.States
         //!TODO!Fill out pause/resume for ticker
         public override void Cleanup() {
             timer.Dispose();
-            SendInputClass.Click(
+            if (!bHuzzah)
+            {
+                SendInputClass.Click(
                            game.GameExtents.Value.X + pauseClickOffset.X,
                            game.GameExtents.Value.Y + pauseClickOffset.Y);
-            System.Threading.Thread.Sleep(200);
-            SendInputClass.Move(0, 0);
+                System.Threading.Thread.Sleep(200);
+            }
+
         }
         //!TODO!Fill out pause/resume for ticker
-        //public override void Pause() { }
+        public override void Pause() {
+            
+        }
 
         //public override void Resume() { }
 
@@ -52,7 +57,7 @@ namespace BBot.States
             if (timer == null)
             {
                 Thread.Sleep(500);
-                timer = new Timer(new TimerCallback(GameOver), game, 65 * 1000, Timeout.Infinite);
+                timer = new Timer(new TimerCallback(GameOver), game, 62 * 1000, Timeout.Infinite);
             }
             
             return false;
