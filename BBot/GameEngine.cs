@@ -45,11 +45,12 @@ namespace BBot
             GameScreen = new Bitmap(ScreenRectangle.Width, ScreenRectangle.Height);
 
             StateManager = new GameStateManager(this);
-
             StateManager.PushState(new UnknownState()); // Set initial state to menu
+
 
             EventStack.Push(new GameEvent(EngineEventType.ENGINE_INIT, null)); // Create engine_init event
 
+            
             GameExtents = new Rectangle(Properties.Settings.Default.GameExtents, Properties.Settings.Default.GameSize);
             CaptureArea();
         }
@@ -84,6 +85,7 @@ namespace BBot
                 DebugEvent(debugMessage);
         }
 
+        private const int SearchBuffer = 40;
         public Rectangle SuggestedSearchArea
         {
             get
@@ -97,10 +99,10 @@ namespace BBot
             {
                 _SuggestedSearchArea = value;
 
-                _SuggestedSearchArea.X -= 20;
-                _SuggestedSearchArea.Y -= 20;
-                _SuggestedSearchArea.Width += 40;
-                _SuggestedSearchArea.Height += 40;
+                _SuggestedSearchArea.X -= SearchBuffer;
+                _SuggestedSearchArea.Y -= SearchBuffer;
+                _SuggestedSearchArea.Width += SearchBuffer*2;
+                _SuggestedSearchArea.Height += SearchBuffer*2;
 
                 // Constrain to visible screen
                 _SuggestedSearchArea.X = Math.Max(_SuggestedSearchArea.X, 0);
@@ -150,8 +152,8 @@ namespace BBot
             }
             else
             { // Extents found from search area, value will be +100/-100
-                newGameLocation.X += SuggestedSearchArea.X;
-                newGameLocation.Y += SuggestedSearchArea.Y;
+                newGameLocation.X += SuggestedSearchArea.X;// -SearchBuffer;
+                newGameLocation.Y += SuggestedSearchArea.Y;// -SearchBuffer;
             }
 
             GameExtents = new Rectangle(newGameLocation, GameSize);
@@ -245,6 +247,8 @@ namespace BBot
             while (states.Count > 0)
                 states.Pop().Cleanup();
 
+            game.findBitmapWorker.StopRequested = false;
+
         }
 
         public void ChangeState(BaseGameState newState)
@@ -291,6 +295,9 @@ namespace BBot
 
                     if (states.Count == 0)
                         return;
+
+                    // Make certain bitmapworker will run
+                    game.findBitmapWorker.StopRequested = false;
 
                     if (states.Peek().HandleEvents())
                         return;
@@ -341,6 +348,7 @@ namespace BBot
     {
         ENGINE_INIT,
         ENGINE_SHUTDOWN,
+        FIND_STATE_HINT,
         START_PLAYING,
         PAUSE_PLAYING,
         RESUME_PLAYING,

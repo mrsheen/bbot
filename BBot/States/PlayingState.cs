@@ -4,11 +4,13 @@ using System.Text;
 using System.Drawing;
 using AForge.Imaging;
 using System.Threading;
+using AForge.Imaging.Filters;
 
 namespace BBot.States
 {
     public class PlayingState : BaseGameState
     {
+        Point pauseClickOffset = new Point(0,0);
 
         public PlayingState()
         {
@@ -22,14 +24,23 @@ namespace BBot.States
             bHuzzah = false;
 
 
-            
+
+            pauseClickOffset.X = 90;
+            pauseClickOffset.Y = 390;
             
         }
 
         //!TODO!Fill out pause/resume for ticker
-        //public override void Cleanup() {}
+        public override void Cleanup() {
+            timer.Dispose();
+            SendInputClass.Click(
+                           game.GameExtents.Value.X + pauseClickOffset.X,
+                           game.GameExtents.Value.Y + pauseClickOffset.Y);
+            System.Threading.Thread.Sleep(200);
+            SendInputClass.Move(0, 0);
+        }
         //!TODO!Fill out pause/resume for ticker
-        // override void Pause() { }
+        //public override void Pause() { }
 
         //public override void Resume() { }
 
@@ -84,7 +95,7 @@ namespace BBot.States
         private const int MAX_DELAY = 400;
 
         private const int HEATMAP_UPDATE = 2000;
-        private int heatmapCount = 0;
+        //private int heatmapCount = 0;
 
         private Bitmap bmpHeatmap;
         private Bitmap bmpBoard;
@@ -163,8 +174,8 @@ namespace BBot.States
 
         private struct Gem
         {
-            GemColor Color;
-            GemModifier Modifier;
+            public GemColor Color;
+            public GemModifier Modifier;
             public Gem(GemColor gColor, GemModifier gModifier)
             {
                 Color = gColor;
@@ -263,8 +274,8 @@ namespace BBot.States
                 }
             }
 
-            return;
-
+            return; //!TODO!Clean up heatmap, do something with it
+            /*
             if (heatmapCount < HEATMAP_UPDATE)
             {
                 heatmapCount++;
@@ -280,7 +291,7 @@ namespace BBot.States
             //}
             // Colorize the memory bitmap and assign it as the picture boxes image
             bmpHeatmap = Heatmap.Colorize(bmpHeatmap, 255);
-
+            */
         }
 
         // 
@@ -532,6 +543,39 @@ namespace BBot.States
             string workingPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), DateTime.Now.ToString("hhmm"));
             System.IO.Directory.CreateDirectory(workingPath+"known");
             System.IO.Directory.CreateDirectory(workingPath + "unknown");
+
+            // Mask out board
+            Bitmap bmpMask = GetBitmap("board.mask", bmpBoard.Size, bmpBoard.PixelFormat);
+            if (bmpMask != null)
+            {
+                Subtract subFilter = new Subtract(bmpMask);
+
+                if (subFilter != null)
+                    subFilter.ApplyInPlace(bmpBoard);
+
+                Bitmap bmpRenderedBoard;
+                if (game.DebugMode)
+                {
+                    bmpRenderedBoard = bmpBoard.Clone(new Rectangle(0, 0, bmpBoard.Width, bmpBoard.Height), bmpBoard.PixelFormat);
+                    
+
+                    using (Graphics g = Graphics.FromImage(bmpRenderedBoard))
+                    {
+                        System.Drawing.Imaging.ColorMatrix cm = new System.Drawing.Imaging.ColorMatrix();
+                        cm.Matrix00 = cm.Matrix11 = cm.Matrix22 = cm.Matrix44 = 1;
+                        cm.Matrix43 = 1.0F;
+
+                        System.Drawing.Imaging.ImageAttributes ia = new System.Drawing.Imaging.ImageAttributes();
+
+                        ia.SetColorMatrix(cm);
+
+                        g.DrawImage(bmpBoard, new Rectangle(0, 0, bmpBoard.Width, bmpBoard.Height), 0, 0, bmpBoard.Width, bmpBoard.Height, GraphicsUnit.Pixel, ia);
+                    }
+                }
+            }
+
+
+
             // Across
             for (int x = 0; x < GridSize; x++)
             {
@@ -556,6 +600,7 @@ namespace BBot.States
                     // Calculate best score
                     double bestScore = 255;
                     double curScore = 0;
+                    
                     foreach (KeyValuePair<Gem, List<double>> item in listGemColorStats)
                     {
 
@@ -578,9 +623,16 @@ namespace BBot.States
                     Color newColor = Color.FromArgb(255,(int)stats.Red.Mean, (int)stats.Green.Mean, (int)stats.Blue.Mean);
                     pieceColors[x, y] = newColor;
 
-                    //string thisPath = string.Format("{0}{1}.bmp", System.IO.Path.Combine(String.Format("{0}{1}", workingPath, listGemColorStats.ContainsKey(PieceColor) ? "known" : "unknown"), "newgem"), newColor.Name);
+                    if (game.DebugMode)
+                    {
+                        string colorName = string.Format("_{0}_{1}_{2}_", (int)newColor.R, (int)newColor.G, (int)newColor.B);
+                        string gemName = string.Format("{0}.{1}", PieceColor.Color, PieceColor.Modifier);
+                        string basePath = System.IO.Path.Combine(String.Format("{0}{1}", workingPath, listGemColorStats.ContainsKey(PieceColor) ? "known" : "unknown"),gemName);
+                        
+                        string thisPath = string.Format("{0}{1}.bmp", basePath, colorName);
 
-                    //cropped.Save(thisPath);
+                        cropped.Save(thisPath);
+                    }
 
                     if (!listGemColorStats.ContainsKey(PieceColor))
                     {

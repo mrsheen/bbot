@@ -27,14 +27,33 @@ namespace BBot.States
             base.Update();
         }
 
-        public override void Init(GameEngine gameRef)
-        {
-            base.Init(gameRef);
 
-            // Manually override start flag
-            bStarted = true;
-        }
-        
+        public override bool HandleEvents()
+        {
+            if (StopRequested)
+                return true;
+
+            while (game.EventStack.Count > 0)
+            {
+                GameEvent myEvent = game.EventStack.Pop();
+
+                if (myEvent.eventType == EngineEventType.CHANGE_MENU)
+                {
+                    game.StateManager.PushState((BaseGameState)myEvent.parameters);
+                    return true;
+                }
+            }
+
+
+            if (!game.GameExtents.HasValue)
+            {
+                Update();
+                return true;
+            }
+
+
+            return false;
+        }        
         
         
     }

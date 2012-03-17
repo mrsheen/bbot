@@ -64,8 +64,7 @@ namespace BBot
 
             // Initially set the preview image
             //this.preview.Image = Image.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("BBot.Assets.Instruction.bmp"));
-            ckbDebug.Checked = Convert.ToBoolean(ConfigurationManager.AppSettings["DebugMode"]);
-
+            
             InitGameEngine(Screen.PrimaryScreen.Bounds); // Start manually
 
         }
@@ -75,6 +74,16 @@ namespace BBot
             DebugMessage("Initializing game engine");
             //gameEngine = new GameEngine(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
             gameEngine = new GameEngine(screenBounds);
+
+
+            bool debugMode = Convert.ToBoolean(ConfigurationManager.AppSettings["DebugMode"]);
+
+#if DEBUG
+            debugMode = true;
+#endif
+
+            if (gameEngine != null)
+                gameEngine.DebugMode = debugMode;
 
             //System.IO.Directory.CreateDirectory(workingPath);
 
@@ -327,31 +336,6 @@ namespace BBot
             StartGame();
         }
 
-
-
-
-        private void ckbDebug_CheckedChanged(object sender, EventArgs e)
-        {
-            if (ckbDebug.Checked)
-            {
-                if (gameEngine != null)
-                    gameEngine.DebugMode = btnSnapshot.Visible = true;
-
-                this.Height = 734;
-            }
-            else
-            {
-                if (gameEngine != null)
-                    gameEngine.DebugMode = btnSnapshot.Visible = false;
-                this.Height = 344;
-            }
-        }
-
-        private void btnSnapshot_Click(object sender, EventArgs e)
-        {
-
-        }
-
         private Type selectedState;
         private void StartGame()
         {
@@ -364,6 +348,7 @@ namespace BBot
                 try
                 {
                     gameEngine.StateManager.PushState((BaseGameState)Activator.CreateInstance(selectedState));
+                    gameEngine.EventStack.Push(new GameEvent(EngineEventType.FIND_STATE_HINT, null));
                 }
                 catch (ApplicationException)
                 {
@@ -423,9 +408,10 @@ namespace BBot
 
             foreach (Screen screen in Screen.AllScreens)
             {
+#if DEBUG
                 if (screen.Primary) // DEBUG
                     continue;
-
+#endif
                 CaptureForm cf = new CaptureForm();
                 cf.StartPosition = FormStartPosition.Manual;
                 cf.Bounds = screen.Bounds;

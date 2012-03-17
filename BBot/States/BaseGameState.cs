@@ -32,6 +32,7 @@ namespace BBot.States
         public virtual void Init(GameEngine gameRef)
         {
             game = gameRef;
+
         }
 
         private Thread FindThread;
@@ -39,7 +40,7 @@ namespace BBot.States
         private void TryFindState()
         {
 
-            FindStateFromScreen(true);
+            FindStateFromScreen(false);
 
             if (!game.GameExtents.HasValue)
                 game.StateManager.PopState();
@@ -55,8 +56,13 @@ namespace BBot.States
                 game.findBitmapWorker.StopRequested = true;
                 StopRequested = true;
                 Thread.Sleep(10);
+                if (Thread.CurrentThread.Equals(FindThread))
+                    return;
+
                 FindThread.Join();
                 FindThread = null;
+
+                game.findBitmapWorker.StopRequested = false;
             }
         }
 
@@ -77,7 +83,7 @@ namespace BBot.States
                 GameEvent myEvent = game.EventStack.Pop();
 
 
-                if (myEvent.eventType == EngineEventType.ENGINE_INIT)
+                if (myEvent.eventType == EngineEventType.FIND_STATE_HINT)
                 {
                     FindThread = new Thread(new ThreadStart(TryFindState));
                     FindThread.Name = String.Format("FindThread-{0}-{1}", this.AssetName, DateTime.Now);
@@ -180,6 +186,9 @@ namespace BBot.States
             Stack<StateBitmapType> typesToCheck = new Stack<StateBitmapType>();
             typesToCheck.Push(StateBitmapType.Blue);
             typesToCheck.Push(StateBitmapType.Mask);
+#if DEBUG
+            typesToCheck.Clear(); // Only check smartmask in debug
+#endif
             typesToCheck.Push(StateBitmapType.SmartMask);
             
 
@@ -217,7 +226,10 @@ namespace BBot.States
                     try
                     {
                         if (game.DebugMode)
-                            search.SearchArea.Save(String.Format("{0}-notmatched-{1}-{2}.bmp", Assembly.GetCallingAssembly().Location, this.AssetName, DateTime.Now));
+                        {
+                            string path = String.Format("{0}-notmatched-{1}-{2}.bmp", Assembly.GetCallingAssembly().Location, this.AssetName, DateTime.Now.ToString("hhmmss"));
+                            search.SearchArea.Save(path);
+                        }
                     }
                     catch (Exception)
                     { }
@@ -232,12 +244,7 @@ namespace BBot.States
         private bool FindHazy(SearchParams search, ref MatchingPoint match)
         {
             match = game.findBitmapWorker.FindInScreen(search.SearchArea, search.ToFind, search.Mask, search.QuickCheck, search.MinimumConfidence);
-            if (search.UsingGameExtents && !search.QuickCheck )
-            {
-                match.X += -20;
-                match.Y += -20;
-            }
-
+           
             if (match.Confident)
                 game.UpdateGameExtents(match.X, match.Y);
 
@@ -312,7 +319,7 @@ namespace BBot.States
         }
 
         
-        private Bitmap GetBitmap(string assetName, Size? size, PixelFormat? format)
+        public static Bitmap GetBitmap(string assetName, Size? size, PixelFormat? format)
         {
             Bitmap assetBitmap = null;
 
