@@ -16,6 +16,7 @@ namespace BBot
         private const int TickPeriod = 50;
 
         public readonly Object GameScreenLOCK = new Object();
+        public readonly Object PreviewScreenLOCK = new Object();
 
 
 
@@ -58,6 +59,8 @@ namespace BBot
         public void Start()
         {
             tickTimer = new Timer(new TimerCallback(GameTick), null, 0, TickPeriod);
+
+            
         }
 
 

@@ -39,6 +39,7 @@
             this.starMedalBlueToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.findGameScreenToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.gameState = new System.Windows.Forms.RichTextBox();
             ((System.ComponentModel.ISupportInitialize)(this.preview)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.menuStrip1.SuspendLayout();
@@ -87,7 +88,7 @@
             this.pictureBox1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pictureBox1.Location = new System.Drawing.Point(468, 31);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(353, 319);
+            this.pictureBox1.Size = new System.Drawing.Size(353, 120);
             this.pictureBox1.TabIndex = 24;
             this.pictureBox1.TabStop = false;
             // 
@@ -103,6 +104,7 @@
             // 
             // menuStrip1
             // 
+            this.menuStrip1.BackColor = System.Drawing.SystemColors.ControlDark;
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.findGameScreenToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
@@ -113,16 +115,26 @@
             // 
             // findGameScreenToolStripMenuItem
             // 
+            this.findGameScreenToolStripMenuItem.BackColor = System.Drawing.SystemColors.ControlLight;
             this.findGameScreenToolStripMenuItem.Name = "findGameScreenToolStripMenuItem";
             this.findGameScreenToolStripMenuItem.Size = new System.Drawing.Size(112, 20);
             this.findGameScreenToolStripMenuItem.Text = "Find game screen";
             this.findGameScreenToolStripMenuItem.Click += new System.EventHandler(this.findGameScreenToolStripMenuItem_Click);
+            // 
+            // gameState
+            // 
+            this.gameState.Location = new System.Drawing.Point(468, 157);
+            this.gameState.Name = "gameState";
+            this.gameState.Size = new System.Drawing.Size(353, 193);
+            this.gameState.TabIndex = 26;
+            this.gameState.Text = "";
             // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(833, 782);
+            this.Controls.Add(this.gameState);
             this.Controls.Add(this.menuStrip1);
             this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.preview);
@@ -153,6 +165,7 @@
         private System.Windows.Forms.ToolStripMenuItem starMedalBlueToolStripMenuItem;
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem findGameScreenToolStripMenuItem;
+        private System.Windows.Forms.RichTextBox gameState;
     }
 }
 

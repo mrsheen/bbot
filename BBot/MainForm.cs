@@ -90,7 +90,7 @@ namespace BBot
             gameEngine.DebugEvent += DebugMessage;
             gameEngine.findBitmapWorker.ImageSearchEvent += ImageSearch;
 
-            preview.Image = gameEngine.GameScreen;
+            
 
             playButton.Enabled = true;
 
@@ -153,19 +153,21 @@ namespace BBot
 
             }
 
-            if ((DateTime.Now - imageSnapshotTimestamp).Seconds < 5)
-                return; // Only update image every 5 seconds
+            if ((DateTime.Now - imageSnapshotTimestamp).Seconds < 1)
+                return; // Only update image every 1 second
 
             Bitmap newImage = new Bitmap(1, 1);
-            if (Monitor.TryEnter(gameEngine.GameScreenLOCK))
+
+            if (Monitor.TryEnter(gameEngine.PreviewScreenLOCK))
             {
                 try
                 {
-                    newImage = gameEngine.GameScreen.Clone(new Rectangle(0, 0, gameEngine.GameScreen.Width, gameEngine.GameScreen.Height), gameEngine.GameScreen.PixelFormat);
+                    if (gameEngine.PreviewScreen != null)
+                        newImage = gameEngine.PreviewScreen.Clone(new Rectangle(0, 0, gameEngine.PreviewScreen.Width, gameEngine.PreviewScreen.Height), gameEngine.PreviewScreen.PixelFormat);
                 }
                 finally
                 {
-                    Monitor.Exit(gameEngine.GameScreenLOCK);
+                    Monitor.Exit(gameEngine.PreviewScreenLOCK);
                 }
             }
 

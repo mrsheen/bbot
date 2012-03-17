@@ -32,7 +32,11 @@ namespace BBot.States
 
         //!TODO!Fill out pause/resume for ticker
         public override void Cleanup() {
-            timer.Dispose();
+            if (timer != null)
+            {
+                timer.Change(Timeout.Infinite, Timeout.Infinite);
+                timer.Dispose();
+            }
             if (!bHuzzah)
             {
                 SendInputClass.Click(
@@ -57,7 +61,7 @@ namespace BBot.States
             if (timer == null)
             {
                 Thread.Sleep(500);
-                timer = new Timer(new TimerCallback(GameOver), game, 62 * 1000, Timeout.Infinite);
+                timer = new Timer(new TimerCallback(GameOver), game, 66 * 1000, Timeout.Infinite);
             }
             
             return false;
@@ -83,7 +87,10 @@ namespace BBot.States
         public override void Draw()
         {
             TickDownDelay(game);
-            //game.PreviewScreen = bmpHeatmap;
+
+
+            
+            
 
         }
 
@@ -99,17 +106,10 @@ namespace BBot.States
 
         private const int MAX_DELAY = 400;
 
-        private const int HEATMAP_UPDATE = 2000;
-        //private int heatmapCount = 0;
-
         private Bitmap bmpHeatmap;
         private Bitmap bmpBoard;
 
         private Gem[,] Board = new Gem[GridSize + 6, GridSize + 6]; // Matrix to hold the colour present in each grid cell
-
-
-        //private static List<Color> knownColors = new List<Color>();
-        //private string workingPath = Path.Combine(Directory.GetCurrentDirectory(), DateTime.Now.ToString("hhmm"));
 
         private System.Threading.Timer timer;
 
@@ -147,10 +147,6 @@ namespace BBot.States
                     Monitor.Exit(game.GameScreenLOCK);
                 }
             }
-            //lock (game.GameScreenLOCK)
-            //{
-            //    bmpBoard = game.GameScreen.Clone(new Rectangle(BoardLocationOnGame, BoardSize), game.GameScreen.PixelFormat);
-            //}
         }
 
         private enum GemColor
@@ -286,10 +282,10 @@ namespace BBot.States
 
         }
 
-
+        private DateTime heatmapTimestamp = DateTime.Now;
+        private DateTime delayTimestamp = DateTime.Now;
         private void TickDownDelay(GameEngine game)
         {
-
             // Loop variables
             int iX;
             int iY;
@@ -302,7 +298,7 @@ namespace BBot.States
             {
                 for (int j = 0; j < GridSize + 6; j++)
                 {
-                    delay[i, j] = delay[i, j] - 10;// tMove.Interval;
+                    delay[i, j] = delay[i, j] - ((DateTime.Now - delayTimestamp).Milliseconds);// tMove.Interval;
                     if (delay[i, j] < 0)
                         delay[i, j] = 0;
 
@@ -310,28 +306,114 @@ namespace BBot.States
                     iY = CellSize * (j - 3);
                     bIntense = (byte)(delay[i, j] * fRatio * Byte.MaxValue);
                     // Add heat point to heat points list
-                    //Heatmap.AddHeatpoint(new Heatmap.HeatPoint(iX, iY, bIntense));
+                    Heatmap.AddHeatpoint(new Heatmap.HeatPoint(iX, iY, bIntense));
                 }
             }
 
-            return; //!TODO!Clean up heatmap, do something with it
-            /*
-            if (heatmapCount < HEATMAP_UPDATE)
+            delayTimestamp = DateTime.Now;
+
+            GenerateBoardImage(game);
+        }
+
+        private Color GetDisplayColorForGem(GemColor gemColor)
+        {
+            Color displayColor = Color.DarkGray;
+
+            switch (gemColor)
             {
-                heatmapCount++;
-                return;
+                case GemColor.Green:
+                    displayColor = Color.Green;
+                    break;
+                case GemColor.Blue:
+                    displayColor = Color.Blue;
+                    break;
+                case GemColor.Orange:
+                    displayColor = Color.Orange;
+                    break;
+                case GemColor.Purple:
+                    displayColor = Color.Purple;
+                    break;
+                case GemColor.Red:
+                    displayColor = Color.Red;
+                    break;
+                case GemColor.White:
+                    displayColor = Color.White;
+                    break;
+                case GemColor.Yellow:
+                    displayColor = Color.Yellow;
+                    break;
             }
 
-            heatmapCount = 0;
+            return displayColor;
+        }
 
-            //lock (game.GameScreen)
-            //{
-            //    // Call CreateIntensityMask, give it the memory bitmap, and store the result back in the memory bitmap
-            //    bmpHeatmap = Heatmap.CreateIntensityMask(game.GameScreen);
-            //}
+        private void GenerateBoardImage(GameEngine game)
+        {
+            Bitmap bmpBoardGems = new Bitmap(bmpBoard);
+
+            using (Graphics g = Graphics.FromImage(bmpBoardGems))
+            {
+                // Across
+                for (int x = 0; x < GridSize; x++)
+                {
+                    // Down
+                    for (int y = 0; y < GridSize; y++)
+                    {
+                        Gem boardGem = Board[x + 3, y + 3];
+                        
+
+
+                        g.FillRectangle(new SolidBrush(GetDisplayColorForGem(boardGem.Name)), x * CellSize, y * CellSize, CellSize, CellSize);
+                        if (boardGem.Modifiers.HasFlag(GemModifier.Multiplier ))
+                            g.FillRectangle(new SolidBrush(Color.White), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
+
+                        if (boardGem.Modifiers.HasFlag(GemModifier.Background))
+                            g.FillRectangle(new SolidBrush(Color.Black), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
+
+                        if (boardGem.Modifiers.HasFlag(GemModifier.Coin))
+                            g.FillRectangle(new SolidBrush(Color.Yellow), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
+                    }
+                }
+            }
+
+            if (Monitor.TryEnter(game.PreviewScreenLOCK,10))
+            {
+                try
+                {
+                    game.PreviewScreen = bmpBoardGems.Clone(new Rectangle(0, 0, bmpBoard.Width, bmpBoardGems.Height), bmpBoardGems.PixelFormat);
+                }
+                finally
+                {
+                    Monitor.Exit(game.PreviewScreenLOCK);
+                }
+            }
+
+            
+        }
+
+        private void GenerateHeatmap(GameEngine game)
+        {
+            if ((DateTime.Now - heatmapTimestamp).Seconds < 0.2)
+                return; // Only update image every 200 milliseconds
+
+            // Call CreateIntensityMask, give it the memory bitmap, and store the result back in the memory bitmap
+            bmpHeatmap = Heatmap.CreateIntensityMask(bmpBoard);
+
             // Colorize the memory bitmap and assign it as the picture boxes image
             bmpHeatmap = Heatmap.Colorize(bmpHeatmap, 255);
-            */
+            heatmapTimestamp = DateTime.Now;
+
+            if (Monitor.TryEnter(game.PreviewScreenLOCK))
+            {
+                try
+                {
+                    game.PreviewScreen = bmpHeatmap.Clone(new Rectangle(0, 0, bmpHeatmap.Width, bmpHeatmap.Height),bmpHeatmap.PixelFormat);
+                }
+                finally
+                {
+                    Monitor.Exit(game.PreviewScreenLOCK);
+                }
+            }
         }
 
         // 
