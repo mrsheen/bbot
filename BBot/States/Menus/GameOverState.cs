@@ -22,6 +22,7 @@ namespace BBot.States
 
         public override void Update()
         {
+            findStates.Push(new MedalState());
             findStates.Push(new PlayNowState());
             findStates.Push(new MenuState());
             findStates.Push(new StarState());

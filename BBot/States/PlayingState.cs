@@ -468,11 +468,11 @@ namespace BBot.States
             
             
             
-            //System.Threading.Thread.Sleep(1000);
+            System.Threading.Thread.Sleep(1);
             SendInputClass.Click(mouseX1, mouseY1);
-            //System.Threading.Thread.Sleep(500);
+            System.Threading.Thread.Sleep(5);
             SendInputClass.Click(mouseX2, mouseY2);
-
+            System.Threading.Thread.Sleep(1);
             game.Debug(string.Format("clickX: {0}, clickY: {1}", mouseX1, mouseY1));
             //Thread.Sleep(1500);
 

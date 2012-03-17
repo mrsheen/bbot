@@ -179,8 +179,9 @@ namespace BBot.States
         {
             Stack<StateBitmapType> typesToCheck = new Stack<StateBitmapType>();
             typesToCheck.Push(StateBitmapType.Blue);
-            typesToCheck.Push(StateBitmapType.SmartMask);
             typesToCheck.Push(StateBitmapType.Mask);
+            typesToCheck.Push(StateBitmapType.SmartMask);
+            
 
             while (typesToCheck.Count > 0)
             {
@@ -192,6 +193,8 @@ namespace BBot.States
                     return false;
                 if (FindExact(search, ref match))
                     return true;
+                if (search.QuickCheck)
+                    return false; // First match didnt work, but asked to be quick
                 if (StopRequested)
                     return false;
                 if (FindHazy(search, ref match))
@@ -255,6 +258,16 @@ namespace BBot.States
                 {
                     case StateBitmapType.SmartMask:
                         rootBitmap = GetBitmap(this.AssetName, size, format);
+                        assetName = String.Format("{0}.smartmask", this.AssetName);
+                        filterBitmap = GetBitmap(assetName, size, format);
+                        if (filterBitmap != null)
+                        { // Special smartmask found, use it
+                            rootBitmap = GetBitmap("wholegame.blankmask", size, format);
+                            addFilter = new AForge.Imaging.Filters.Add(filterBitmap);
+                            addFilter.ApplyInPlace(rootBitmap);
+                            goto case StateBitmapType.Blue;
+                        }
+                        // Use normal tofind but add background as mask
                         assetName = "wholegame.background";
                         filterBitmap = GetBitmap(assetName, size, format);
                         if (filterBitmap != null)

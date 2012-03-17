@@ -160,7 +160,7 @@ namespace BBot
                 }
             }
 
-            if (newImage.Width != 0)
+            if (newImage.Width != 1)
             { // resize and show
 
                 // Prevent using images internal thumbnail
@@ -182,7 +182,10 @@ namespace BBot
                     newHeight = preview.Height;
                 }
 
-                preview.Image = newImage.GetThumbnailImage(newWidth, newHeight, null, IntPtr.Zero);
+                Image resizedImage = newImage.GetThumbnailImage(newWidth, newHeight, null, IntPtr.Zero);
+
+                preview.Image = resizedImage;
+
                 imageSnapshotTimestamp = DateTime.Now;
                 // Clear handle to original file so that we can overwrite it if necessary
                 newImage.Dispose();

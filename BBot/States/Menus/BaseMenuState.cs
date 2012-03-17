@@ -15,6 +15,10 @@ namespace BBot.States
         private Bitmap bmpPreviousGameScreen;
         private bool bFirstRun = false;
 
+        private DateTime previousTimestamp;
+        private int checkCount;
+        private const int DeepSearch = 3;
+
         protected BaseMenuState() { }
         
         public override void Init(GameEngine gameRef)
@@ -24,6 +28,10 @@ namespace BBot.States
             bmpPreviousGameScreen = new Bitmap(1, 1);
             bFirstRun = true;
             SendInputClass.Move(0, 0); //!TODO!Move to a better location
+
+            previousTimestamp = DateTime.Now.AddMilliseconds(-5001);
+            checkCount = 3;
+
         }
 
 
@@ -67,6 +75,15 @@ namespace BBot.States
 
         public override void Update()
         {
+            //!TODO!Timer on this
+            if ((DateTime.Now - previousTimestamp).TotalMilliseconds < 5000)
+            {
+                findStates.Clear(); // need to empty this, it fills up from multiple Update() calls
+                return; // Only every five seconds
+            }
+            game.Debug("Looking for menus from within unknown state");
+            checkCount++;
+            
 
             MatchingPoint match;
 
@@ -79,9 +96,10 @@ namespace BBot.States
             while (findStates.Count > 0)
             {
                 BaseGameState state = findStates.Pop();
-                state.Init(game);
-                //Look for different state
-                match = state.FindStateFromScreen(state.AssetName.Equals(this.AssetName));
+                if (state != this)
+                    state.Init(game);
+                //Look for different state (first time check exact only)
+                match = state.FindStateFromScreen(checkCount >= DeepSearch || state.AssetName.Equals(this.AssetName));
                 if (match.Confident)
                 {
                     // Check for this menu
@@ -105,9 +123,11 @@ namespace BBot.States
                 }
 
             }
+
+
             PlayingState playingState = new PlayingState();
             playingState.Init(game);
-            match = playingState.FindStateFromScreen();
+            match = playingState.FindStateFromScreen(true);
             if (match.Confident)
             {
                 // Started playing
@@ -119,6 +139,9 @@ namespace BBot.States
             //game.Debug("Nothing found, playing again");
             game.Debug("Nothing found");
 
+            checkCount = checkCount % DeepSearch;
+            
+            previousTimestamp = DateTime.Now;
 
             return;
         }
