@@ -5,13 +5,13 @@ Bejeweled Blitz Bot
 
 ## Description
 
-A fork of Mark Ashley Bell's C# Bejeweled Bot [mab-bbot] repository, which itself is a port of William Henry's Java Bejeweled Bot [wh-bbot].
+A fork of Mark Ashley Bell's [mab-bbot] repository, which itself is a port of William Henry's [wh-bbot].
 
 Includes many ideas from Charles Cook [cc-bbot], including the use of AForge.NET for image statistics, an algorithm for efficient full-screen searching of game menus, and a slick solution for unecessary moves using a move dampener.
 
 From Mark's [mab-bbot] page
 
-So, this is my attempt at porting William Henry's [Bejeweled Bot]() to C#. It's not very efficient yet, and it doesn't currently match special gems, so it occasionally gets 'stuck'. However, it's still a darn sight faster than I am... :)
+So, this is my attempt at porting William Henry's [wh-bbot] to C#. It's not very efficient yet, and it doesn't currently match special gems, so it occasionally gets 'stuck'. However, it's still a darn sight faster than I am... :)
 
 ## License
 
@@ -39,8 +39,8 @@ I forked [mab-bbot] to quickly get up to speed with a working program. I have si
  - Global Win32 hotkey (Escape) to kill the game engine if it starts misbehaving
  
 
-[mab-bbot]: https://github.com/markashleybell/bbot
-[wh-bbot]: http://mytopcoder.com/BejeweledBot
-[cc-bbot]: http://www.charlesrcook.com/archive/2010/09/05/creating-a-bejeweled-blitz-bot-in-c.aspx
+[mab-bbot]: https://github.com/markashleybell/bbot "C# Bejeweled Bot"
+[wh-bbot]: http://mytopcoder.com/BejeweledBot "Java Bejeweled Bot"
+[cc-bbot]: http://www.charlesrcook.com/archive/2010/09/05/creating-a-bejeweled-blitz-bot-in-c.aspx "Creating a bejeweled blitz bot in c"
 
-[mrsheen-bbot]: https://github.com/mrsheen/bbot
+[mrsheen-bbot]: https://github.com/mrsheen/bbot "bejeweled-blitz-bot"
