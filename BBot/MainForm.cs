@@ -54,7 +54,7 @@ namespace BBot
 
 
             // Shift-Ctrl-Alt Escape will exit the play loop
-            WIN32.RegisterHotKey(Handle, 100, WIN32.KeyModifiers.Control | WIN32.KeyModifiers.Alt | WIN32.KeyModifiers.Shift, Keys.Escape);
+            WIN32.RegisterHotKey(Handle, 100, WIN32.KeyModifiers.None, Keys.Escape);
 
             this.FormClosing += new FormClosingEventHandler(Form1_FormClosing);
 
@@ -93,6 +93,7 @@ namespace BBot
             
 
             playButton.Enabled = true;
+            playButton.Text = "Start";
 
             tUpdateDisplay.Start();
 
@@ -122,7 +123,8 @@ namespace BBot
 
             gameEngine = null;
 
-            playButton.Enabled = false;
+            playButton.Enabled = true;
+            playButton.Text = "Start";
         }
 
         private readonly object PlotDetailsLOCK = new Object();
@@ -363,6 +365,9 @@ namespace BBot
             }
 
             gameEngine.Start();
+
+            playButton.Enabled = false;
+            playButton.Text = "-Game Engine Running-";
 
         }
 

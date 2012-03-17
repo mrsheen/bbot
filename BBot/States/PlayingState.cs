@@ -302,8 +302,8 @@ namespace BBot.States
                     if (delay[i, j] < 0)
                         delay[i, j] = 0;
 
-                    iX = CellSize * (i - 3);
-                    iY = CellSize * (j - 3);
+                    iX = CellSize * (i - 3) + CellSize/2;
+                    iY = CellSize * (j - 3) + CellSize/2;
                     bIntense = (byte)(delay[i, j] * fRatio * Byte.MaxValue);
                     // Add heat point to heat points list
                     Heatmap.AddHeatpoint(new Heatmap.HeatPoint(iX, iY, bIntense));
@@ -312,7 +312,21 @@ namespace BBot.States
 
             delayTimestamp = DateTime.Now;
 
-            GenerateBoardImage(game);
+            Bitmap bmpNewPreview = GenerateBoardImage(game);
+            bmpNewPreview = GenerateHeatmap(game, bmpNewPreview);
+
+
+            if (Monitor.TryEnter(game.PreviewScreenLOCK, 10))
+            {
+                try
+                {
+                    game.PreviewScreen = bmpNewPreview.Clone(new Rectangle(0, 0, bmpNewPreview.Width, bmpNewPreview.Height), bmpNewPreview.PixelFormat);
+                }
+                finally
+                {
+                    Monitor.Exit(game.PreviewScreenLOCK);
+                }
+            }
         }
 
         private Color GetDisplayColorForGem(GemColor gemColor)
@@ -322,32 +336,32 @@ namespace BBot.States
             switch (gemColor)
             {
                 case GemColor.Green:
-                    displayColor = Color.Green;
+                    displayColor = Color.DarkGreen;
                     break;
                 case GemColor.Blue:
-                    displayColor = Color.Blue;
+                    displayColor = Color.DarkBlue;
                     break;
                 case GemColor.Orange:
-                    displayColor = Color.Orange;
+                    displayColor = Color.DarkOrange;
                     break;
                 case GemColor.Purple:
                     displayColor = Color.Purple;
                     break;
                 case GemColor.Red:
-                    displayColor = Color.Red;
+                    displayColor = Color.DarkRed;
                     break;
                 case GemColor.White:
-                    displayColor = Color.White;
+                    displayColor = Color.LightGray;
                     break;
                 case GemColor.Yellow:
-                    displayColor = Color.Yellow;
+                    displayColor = Color.LemonChiffon;
                     break;
             }
 
             return displayColor;
         }
 
-        private void GenerateBoardImage(GameEngine game)
+        private Bitmap GenerateBoardImage(GameEngine game)
         {
             Bitmap bmpBoardGems = new Bitmap(bmpBoard);
 
@@ -365,55 +379,40 @@ namespace BBot.States
 
                         g.FillRectangle(new SolidBrush(GetDisplayColorForGem(boardGem.Name)), x * CellSize, y * CellSize, CellSize, CellSize);
                         if (boardGem.Modifiers.HasFlag(GemModifier.Multiplier ))
-                            g.FillRectangle(new SolidBrush(Color.White), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
+                            g.FillRectangle(new SolidBrush(Color.HotPink), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
 
                         if (boardGem.Modifiers.HasFlag(GemModifier.Background))
-                            g.FillRectangle(new SolidBrush(Color.Black), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
+                            g.FillRectangle(new SolidBrush(Color.DarkGray), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
 
                         if (boardGem.Modifiers.HasFlag(GemModifier.Coin))
-                            g.FillRectangle(new SolidBrush(Color.Yellow), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
+                            g.FillRectangle(new SolidBrush(Color.Wheat), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
                     }
                 }
             }
 
-            if (Monitor.TryEnter(game.PreviewScreenLOCK,10))
-            {
-                try
-                {
-                    game.PreviewScreen = bmpBoardGems.Clone(new Rectangle(0, 0, bmpBoard.Width, bmpBoardGems.Height), bmpBoardGems.PixelFormat);
-                }
-                finally
-                {
-                    Monitor.Exit(game.PreviewScreenLOCK);
-                }
-            }
-
+            return bmpBoardGems;
             
         }
 
-        private void GenerateHeatmap(GameEngine game)
+        private Bitmap GenerateHeatmap(GameEngine game, Bitmap bmpNewPreview)
         {
-            if ((DateTime.Now - heatmapTimestamp).Seconds < 0.2)
-                return; // Only update image every 200 milliseconds
+            //if ((DateTime.Now - heatmapTimestamp).Seconds < 0.05)
+            //    return bmpNewPreview; // Only update image every 50 milliseconds
+
+            Bitmap tempHeatmapMask = new Bitmap(bmpNewPreview);
 
             // Call CreateIntensityMask, give it the memory bitmap, and store the result back in the memory bitmap
-            bmpHeatmap = Heatmap.CreateIntensityMask(bmpBoard);
+            bmpHeatmap = Heatmap.CreateIntensityMask(tempHeatmapMask);
 
             // Colorize the memory bitmap and assign it as the picture boxes image
             bmpHeatmap = Heatmap.Colorize(bmpHeatmap, 255);
             heatmapTimestamp = DateTime.Now;
 
-            if (Monitor.TryEnter(game.PreviewScreenLOCK))
-            {
-                try
-                {
-                    game.PreviewScreen = bmpHeatmap.Clone(new Rectangle(0, 0, bmpHeatmap.Width, bmpHeatmap.Height),bmpHeatmap.PixelFormat);
-                }
-                finally
-                {
-                    Monitor.Exit(game.PreviewScreenLOCK);
-                }
-            }
+            // Add together
+            Add filterAdd = new Add(bmpHeatmap);
+            filterAdd.ApplyInPlace(bmpNewPreview);
+
+            return bmpNewPreview;
         }
 
         // 
@@ -422,7 +421,7 @@ namespace BBot.States
         private void DoMoves(GameEngine game)
         {
             // Across
-            for (int y = 3; y < GridSize + 3; y++)
+            for (int y = GridSize + 3-1; y >= 3; y--)
             {
                 // Down
                 for (int x = 3; x < GridSize + 3; x++)
@@ -572,7 +571,7 @@ namespace BBot.States
 
         private void MakeMove(GameEngine game, int x1, int y1, int x2, int y2)
         {
-            int primaryDelay = MAX_DELAY / 2;
+            int primaryDelay = MAX_DELAY;
 
 
             if (!(CheckDelay(x1, y1) && CheckDelay(x2, y2)))
@@ -662,9 +661,10 @@ namespace BBot.States
 
             int top = 10;//topOffset;
             int left = 10; //leftOffset;
+            
             string workingPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), DateTime.Now.ToString("hhmm"));
-            System.IO.Directory.CreateDirectory(workingPath+"known");
-            System.IO.Directory.CreateDirectory(workingPath + "unknown");
+            //System.IO.Directory.CreateDirectory(workingPath+"known");
+            //System.IO.Directory.CreateDirectory(workingPath + "unknown");
 
             // Mask out board
             Bitmap bmpMask = GetBitmap("board.mask", bmpBoard.Size, bmpBoard.PixelFormat);
