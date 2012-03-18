@@ -5,6 +5,7 @@ using System.Drawing;
 using AForge.Imaging;
 using System.Threading;
 using AForge.Imaging.Filters;
+using BBot.GamePieces;
 
 namespace BBot.States
 {
@@ -18,7 +19,7 @@ namespace BBot.States
             AssetName = "wholegame.playing";
             MinimumConfidence = 200000;
 
-            BuildGemColorStats();
+            listGemColorStats = GemDefinitions.GetGemDefinitions();
             delay = new int[GridSize + 6, GridSize + 6];
             bmpHeatmap = new Bitmap(BoardSize.Width, BoardSize.Height);
             bHuzzah = false;
@@ -39,16 +40,16 @@ namespace BBot.States
             }
             if (!bHuzzah)
             {
-                SendInputClass.Click(
-                           game.GameExtents.Value.X + pauseClickOffset.X,
-                           game.GameExtents.Value.Y + pauseClickOffset.Y);
-                System.Threading.Thread.Sleep(200);
+                Pause();
             }
 
         }
         //!TODO!Fill out pause/resume for ticker
         public override void Pause() {
-            
+            SendInputClass.Click(
+                           game.GameExtents.Value.X + pauseClickOffset.X,
+                           game.GameExtents.Value.Y + pauseClickOffset.Y);
+            System.Threading.Thread.Sleep(200);
         }
 
         //public override void Resume() { }
@@ -80,8 +81,9 @@ namespace BBot.States
             if (!bContinue)
                 return;
 
-            ScanGrid();
-            DoMoves(game);
+            if (ScanGrid())
+                DoMoves(game);
+
         }
 
         public override void Draw()
@@ -99,7 +101,7 @@ namespace BBot.States
         private bool bContinue = false;
 
         private readonly Size BoardSize = new Size(320, 320); // The size of the Bejeweled gem grid
-        private readonly Point BoardLocationOnGame = new Point(175, 54);
+        private readonly Point BoardLocationOnGame = new Point(175, 55);
         private const int CellSize = 40; // Size of each cell in the grid
         private const int GridSize = 8;
 
@@ -148,132 +150,7 @@ namespace BBot.States
                 }
             }
         }
-
-        private enum GemColor
-        {
-            None,
-            White,
-            Purple,
-            Blue,
-            Green,
-            Yellow,
-            Orange,
-            Red
-        }
-
-        [Flags]
-        private enum GemModifier
-        {
-            None = 0,
-            ExtraColor = 2,
-            Flame = 4,
-            Star = 8,
-            Multiplier = 16,
-            Coin = 32,
-            Background = 64,
-            Hypercube = 128
-        }
-
-        private struct Gem
-        {
-            public GemColor Name;
-            public GemModifier Modifiers;
-            public Color Color;
-            public Gem(GemColor gName, GemModifier gModifiers, Color gColor)
-            {
-                Name = gName;
-                Modifiers = gModifiers;
-                Color = gColor;
-            }
-
-            public bool Equals(Gem gemCompare)
-            {
-                bool ColorsEqual = false;
-
-                if (gemCompare.Modifiers.HasFlag(GemModifier.Hypercube) || this.Modifiers.HasFlag(GemModifier.Hypercube))
-                    ColorsEqual = true;
-
-                if (gemCompare.Name == this.Name)
-                    ColorsEqual = true;
-
-                if (gemCompare.Modifiers.HasFlag(GemModifier.Background) || this.Modifiers.HasFlag(GemModifier.Background))
-                    ColorsEqual = false;
-
-                if (gemCompare.Name == GemColor.None || this.Name == GemColor.None)
-                    ColorsEqual = false;
-
-                return ColorsEqual;
-            }
-        }
-
-        private void BuildGemColorStats()
-        {
-            //RedMeanB    GreenMeanB    BlueMeanB
-            listGemColorStats = new List<Gem>();
-
-            // Original colors
-            listGemColorStats.Add(new Gem(GemColor.White, GemModifier.None, Color.FromArgb(122, 122, 122 )));
-
-            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.None, Color.FromArgb( 119, 26, 119 )));
-            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.None, Color.FromArgb(105, 26, 105)));
-            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.None, Color.FromArgb(119, 80, 119)));
-            
-            
-            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.None, Color.FromArgb(136, 96,42)));
-            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.None, Color.FromArgb(130, 82, 34)));
-
-
-            listGemColorStats.Add(new Gem(GemColor.Red, GemModifier.None, Color.FromArgb( 130, 15, 31 )));
-
-            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.None, Color.FromArgb(136, 122, 18)));
-            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.None, Color.FromArgb(106, 90, 10)));
-            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.Coin, Color.FromArgb(113, 98, 26)));;
-
-
-
-            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.None, Color.FromArgb(1, 117, 27)));
-            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.None, Color.FromArgb(0, 79, 7)));
-            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.None, Color.FromArgb(29, 118, 48)));
-            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.None, Color.FromArgb(40, 114, 59)));
-            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.None, Color.FromArgb(10, 96, 13)));
-
-            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.None, Color.FromArgb(30, 7, 116)));
-            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.None, Color.FromArgb(4, 60, 116)));
-            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.None, Color.FromArgb(7, 70, 130)));
-            /*
-            listGemColorStats.Add(new Gem(GemColor.White, GemModifier.None) , Color.FromArgb( 214, 213, 213 )));
-            
-            
-            
-            
-            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.None, Color.FromArgb( 228, 143, 59 )));
-            listGemColorStats.Add(new Gem(GemColor.Red, GemModifier.None, Color.FromArgb( 238, 27, 56 )));*/
-
-            // Background
-            listGemColorStats.Add(new Gem(GemColor.None, GemModifier.Background, Color.FromArgb( 30,30,30  )));
-            listGemColorStats.Add(new Gem(GemColor.None, GemModifier.Background, Color.FromArgb(40, 40, 40)));
-            listGemColorStats.Add(new Gem(GemColor.None, GemModifier.Background, Color.FromArgb(59, 47, 44)));
-
-            // Multipliers
-            listGemColorStats.Add(new Gem(GemColor.Blue, GemModifier.Multiplier, Color.FromArgb( 65, 86, 104 )));
-            listGemColorStats.Add(new Gem(GemColor.Orange, GemModifier.Multiplier, Color.FromArgb( 104,81,65)));
-            listGemColorStats.Add(new Gem(GemColor.Green, GemModifier.Multiplier, Color.FromArgb(61, 97, 63)));
-            /*
-            
-            
-            listGemColorStats.Add(new Gem(GemColor.Yellow, GemModifier.Multiplier, Color.FromArgb( 190,190,100)));
-            listGemColorStats.Add(new Gem(GemColor.Purple, GemModifier.Multiplier, Color.FromArgb( 180,115,180)));
-            listGemColorStats.Add(new Gem(GemColor.Red, GemModifier.Multiplier, Color.FromArgb( 190,120,120)));
-            listGemColorStats.Add(new Gem(GemColor.White, GemModifier.Multiplier, Color.FromArgb( 180,180,180)));
-            */
-
-            listGemColorStats.Add(new Gem(GemColor.None, GemModifier.None, Color.FromArgb(136, 136, 136)));
-            listGemColorStats.Add(new Gem(GemColor.None, GemModifier.None, Color.FromArgb(140, 140, 140)));
-
-
-        }
-        
-           
+ 
 
         // Check if two colours match
         private bool MatchColours(Gem a, Gem b)
@@ -329,37 +206,6 @@ namespace BBot.States
             }
         }
 
-        private Color GetDisplayColorForGem(GemColor gemColor)
-        {
-            Color displayColor = Color.DarkGray;
-
-            switch (gemColor)
-            {
-                case GemColor.Green:
-                    displayColor = Color.DarkGreen;
-                    break;
-                case GemColor.Blue:
-                    displayColor = Color.DarkBlue;
-                    break;
-                case GemColor.Orange:
-                    displayColor = Color.DarkOrange;
-                    break;
-                case GemColor.Purple:
-                    displayColor = Color.Purple;
-                    break;
-                case GemColor.Red:
-                    displayColor = Color.DarkRed;
-                    break;
-                case GemColor.White:
-                    displayColor = Color.LightGray;
-                    break;
-                case GemColor.Yellow:
-                    displayColor = Color.LemonChiffon;
-                    break;
-            }
-
-            return displayColor;
-        }
 
         private Bitmap GenerateBoardImage(GameEngine game)
         {
@@ -377,15 +223,23 @@ namespace BBot.States
                         
 
 
-                        g.FillRectangle(new SolidBrush(GetDisplayColorForGem(boardGem.Name)), x * CellSize, y * CellSize, CellSize, CellSize);
+                        g.FillRectangle(new SolidBrush(GemDefinitions.GetDisplayColorForGem(boardGem.Name)), x * CellSize, y * CellSize, CellSize, CellSize);
+
+                        if (boardGem.Modifiers.HasFlag(GemModifier.Star))
+                            g.FillRectangle(new SolidBrush(Color.White), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
+
+                        if (boardGem.Modifiers.HasFlag(GemModifier.Hypercube))
+                            g.FillRectangle(new SolidBrush(Color.LimeGreen), x * CellSize, y * CellSize , CellSize, CellSize);
+
+
                         if (boardGem.Modifiers.HasFlag(GemModifier.Multiplier ))
                             g.FillRectangle(new SolidBrush(Color.HotPink), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
 
                         if (boardGem.Modifiers.HasFlag(GemModifier.Background))
-                            g.FillRectangle(new SolidBrush(Color.DarkGray), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
+                            g.FillRectangle(new SolidBrush(Color.Black), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
 
                         if (boardGem.Modifiers.HasFlag(GemModifier.Coin))
-                            g.FillRectangle(new SolidBrush(Color.Wheat), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
+                            g.FillRectangle(new SolidBrush(Color.Yellow), x * CellSize + (CellSize / 4), y * CellSize + (CellSize / 4), CellSize / 2, CellSize / 2);
                     }
                 }
             }
@@ -600,15 +454,15 @@ namespace BBot.States
             
             
             
-            System.Threading.Thread.Sleep(1);
+            System.Threading.Thread.Sleep(10);
             SendInputClass.Click(mouseX1, mouseY1);
-            System.Threading.Thread.Sleep(5);
+            System.Threading.Thread.Sleep(10);
             SendInputClass.Click(mouseX2, mouseY2);
-            System.Threading.Thread.Sleep(1);
+            System.Threading.Thread.Sleep(10);
             game.Debug(string.Format("clickX: {0}, clickY: {1}", mouseX1, mouseY1));
             //Thread.Sleep(1500);
 
-            SendInputClass.Move(startPoint.X - 90, startPoint.Y + 150);
+            SendInputClass.Click(startPoint.X - 90, startPoint.Y + 150);
             
 
         }
@@ -651,16 +505,21 @@ namespace BBot.States
 
         }
 
-        
 
+        private DateTime backgroundMatchTimestamp = DateTime.Now;
         // Scan the gem Board and capture a coloured pixel from each cell
-        public void ScanGrid()
+        public bool ScanGrid()
         {
+            bool bMatchedAllPieces = true;
+            int unmatchedCount = 0;
+
             Color[,] pieceColors = new Color[8, 8];
             List<double> scores = new List<double>();
 
-            int top = 10;//topOffset;
-            int left = 10; //leftOffset;
+            const int CellExtractionFactor = 8; // 8ths, so skip first 5 px
+
+            int top = CellSize / CellExtractionFactor;//topOffset;
+            int left = CellSize / CellExtractionFactor; //leftOffset;
             
             string workingPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), DateTime.Now.ToString("hhmm"));
             //System.IO.Directory.CreateDirectory(workingPath+"known");
@@ -711,16 +570,16 @@ namespace BBot.States
                     
                     
                     // Get image of current gem
-                    Rectangle rect = new Rectangle(boxLeft, boxTop, CellSize / 2, CellSize / 2);
+                    Rectangle rect = new Rectangle(boxLeft, boxTop, CellSize - 2 * (CellSize / CellExtractionFactor), CellSize - 2 * (CellSize / CellExtractionFactor));
                     Bitmap cropped = bmpBoard.Clone(rect, bmpBoard.PixelFormat);
 
                     ImageStatistics stats = new ImageStatistics(cropped);
                     
                     // Capture a colour from this gem
-                    Gem PieceColor = new Gem(GemColor.None,GemModifier.None, Color.FromArgb(255, (int)stats.Red.Mean, (int)stats.Green.Mean, (int)stats.Blue.Mean));
+                    Gem PieceColor = new Gem { Name = GemColor.None, Modifiers = GemModifier.None, Color = Color.FromArgb(255, (int)stats.Red.Mean, (int)stats.Green.Mean, (int)stats.Blue.Mean) };
                     
                     // Calculate best score
-                    double bestScore = 255*3;
+                    double bestScore = 255*3; // what should this be set to?
                     double curScore = 0;
                     
                     foreach (Gem gem in listGemColorStats)
@@ -747,13 +606,29 @@ namespace BBot.States
 
                     if (game.DebugMode)
                     {
-                        string colorName = string.Format("_{0}_{1}_{2}_", (int)newColor.R, (int)newColor.G, (int)newColor.B);
-                        string gemName = string.Format("{0}.{1}", PieceColor.Name, PieceColor.Modifiers);
-                        string basePath = System.IO.Path.Combine(String.Format("{0}{1}", workingPath, listGemColorStats.Contains(PieceColor) ? "known" : "unknown"),gemName);
-                        
-                        string thisPath = string.Format("{0}{1}.bmp", basePath, colorName);
+                        if (PieceColor.Name == GemColor.None || PieceColor.Modifiers == GemModifier.Background)
+                        {
+                            unmatchedCount++;
+                            bMatchedAllPieces = false; // Didn't match one of the pieces, break on this
+                            if ((DateTime.Now - backgroundMatchTimestamp).Seconds > 5)
+                            {
+                                System.IO.Directory.CreateDirectory(workingPath);
+                                
+                                string colorName = string.Format("_{0}_{1}_{2}_", (int)newColor.R, (int)newColor.G, (int)newColor.B);
+                                string gemName = string.Format("{0}.{1}", PieceColor.Name, PieceColor.Modifiers);
+                                string basePath = System.IO.Path.Combine(workingPath, gemName);
 
-                        //cropped.Save(thisPath);
+                                string thisPath = string.Format("{0}{1}.bmp", basePath, colorName);
+
+                                cropped.Save(thisPath);
+                                game.Debug(String.Format("Written out unknown gamepiece {0},{1}", x,y));
+
+                                //System.Diagnostics.Debugger.Break();
+                            }
+
+                            
+                        }
+                        
                     }
 
                     if (!listGemColorStats.Contains(PieceColor))
@@ -781,6 +656,10 @@ namespace BBot.States
                     }*/
                 }
             }
+            if (bMatchedAllPieces)
+                backgroundMatchTimestamp = DateTime.Now;
+            
+            return bMatchedAllPieces && unmatchedCount < 3;
 
             // Build known averages
             

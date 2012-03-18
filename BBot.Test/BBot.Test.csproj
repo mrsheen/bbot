@@ -55,6 +55,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BaseGameStateTest.cs" />
+    <Compile Include="GemDefinitionsTest.cs" />
     <Compile Include="PlayingStateTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
