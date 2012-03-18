@@ -351,9 +351,24 @@ namespace BBot.States
         private void GetSearchAreaBitmap(ref SearchParams search) // PixelFormat format)
         {
             game.CaptureArea(); // Get search bitmap
+                        
+            Rectangle searchLocation = new Rectangle(0, 0, search.ToFind.Width,search.ToFind.Height);
 
+            if (Monitor.TryEnter(game.GameScreenLOCK, 1000))
+            {
+                try
+                {
+                    // Set search bounds to captured area
+                    searchLocation = new Rectangle(0, 0, game.GameScreen.Width, game.GameScreen.Height);
+
+                }
+                finally
+                {
+                    Monitor.Exit(game.GameScreenLOCK);
+                }
+            }
             // Set search bounds to captured area
-            Rectangle searchLocation = new Rectangle(0, 0, game.GameScreen.Width, game.GameScreen.Height);
+            
 
 
             if (game.GameExtents.HasValue)

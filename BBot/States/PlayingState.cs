@@ -104,7 +104,7 @@ namespace BBot.States
         private const int GridSize = 8;
 
 
-        private const int MAX_DELAY = 400;
+        private const int MAX_DELAY = 750;
 
         private Bitmap bmpHeatmap;
         private Bitmap bmpBoard;
@@ -363,7 +363,7 @@ namespace BBot.States
 
         private Bitmap GenerateBoardImage(GameEngine game)
         {
-            Bitmap bmpBoardGems = new Bitmap(bmpBoard);
+            Bitmap bmpBoardGems = new Bitmap(BoardSize.Width,BoardSize.Height);
 
             using (Graphics g = Graphics.FromImage(bmpBoardGems))
             {
