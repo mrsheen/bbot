@@ -106,7 +106,7 @@ namespace BBot.States
         private const int GridSize = 8;
 
 
-        private const int MAX_DELAY = 750;
+        private const int MAX_DELAY = 500;
 
         private Bitmap bmpHeatmap;
         private Bitmap bmpBoard;
@@ -454,11 +454,11 @@ namespace BBot.States
             
             
             
-            System.Threading.Thread.Sleep(10);
+            //System.Threading.Thread.Sleep(10);
             SendInputClass.Click(mouseX1, mouseY1);
-            System.Threading.Thread.Sleep(10);
+            //System.Threading.Thread.Sleep(10);
             SendInputClass.Click(mouseX2, mouseY2);
-            System.Threading.Thread.Sleep(10);
+            //System.Threading.Thread.Sleep(10);
             game.Debug(string.Format("clickX: {0}, clickY: {1}", mouseX1, mouseY1));
             //Thread.Sleep(1500);
 
@@ -481,7 +481,7 @@ namespace BBot.States
 
 
             int dampeningRadius = 4;
-            double a = -2.0 * dampeningRadius * dampeningRadius / Math.Log(0.00005);
+            double a = -2.0 * dampeningRadius * dampeningRadius / Math.Log(0.00001);
 
             // Tick for each delay
             for (int i = 0; i < GridSize + 6; i++)

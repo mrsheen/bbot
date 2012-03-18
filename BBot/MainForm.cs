@@ -367,7 +367,7 @@ namespace BBot
             gameEngine.Start();
 
             playButton.Enabled = false;
-            playButton.Text = "-Game Engine Running-";
+            playButton.Text = "-Press Escape to stop-";
 
         }
 
