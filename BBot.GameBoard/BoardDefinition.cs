@@ -8,42 +8,80 @@ namespace BBot.GameDefinitions
 {
 
     [Serializable()]
-    public class GameBoard
+    public class BoardDefinition
     {
-        public Gem[,] Board;
+        public readonly Size BoardSize = new Size(320, 320); // The size of the Bejeweled gem grid (in pixels, GridSize * CellSize)
+        public readonly int CellSize = 40; // Size of each cell in the grid (in pixels)
+        public readonly int GridSize = 8; // Size of grid (number of rows/columns)
 
-        public GameBoard(Gem[,] board)
+        public Gem[,] Board; // Two-dimensional array of game pieces representing the board
+
+        private Bitmap bmpRawBoard;
+        private Bitmap bmpGeneratedBoard;
+
+        private Gem[,] fullBoard; // Matrix to hold the colour present in each grid cell, with a buffer to simplify matching at edges
+
+        public BoardDefinition()
         {
-            Board = board;
+            Board = new Gem[GridSize, GridSize];
+            fullBoard = new Gem[GridSize + 6, GridSize + 6];
+        }
+        /*
+            *Scenario 1*
+            Given an image of a game board, synthesize a representation into a useful form. This will use a set of known heuristics for each 
+            game piece, and make a best-guess effort to identify game pieces on the game board.
+        */
+
+        public void GetBoardFromImage(Bitmap bmpBoardImage)
+        {
+            bmpRawBoard = bmpBoardImage;
+            // Fill Board with gems
+        }
+
+        /*
+            *Scenario 2*
+            Given a game board, find any possible moves. This will use an exhaustive search to determine any valid moves which generate a match
+            for the current board. Also, find best possible move. This will make a best-guess effort to sort valid moves by likelihood to produce
+            large chains or multiple matches.
+        */
+        public void GetValidMovesFromBoard()
+        {
 
         }
-    
 
-        private bool bContinue = false;
+        /*
+            *Scenario 3*
+            Given a game board and a valid move, determine subsequent game board state. This will utilise game play rules to simulate the effects
+            of a move.
+        */
+        public void MakeMoveOnBoard()
+        {
 
-        public readonly Size BoardSize = new Size(320, 320); // The size of the Bejeweled gem grid
-        public readonly Point BoardLocationOnGame = new Point(175, 55);
-        public readonly int CellSize = 40; // Size of each cell in the grid
-        public readonly int GridSize = 8;
+        }
 
+        /*
+            *Scenario 4* 
+            Given an image of a game board, improve known heuristics by manually identifying game pieces. This will use suggested matches to overwrite
+            known heuristics for game pieces.
+        */
+        public void IdentifyGamePiece()
+        {
 
-        private const int MAX_DELAY = 500;
+        }
 
-        private Bitmap bmpHeatmap;
-        private Bitmap bmpBoard;
+        /*
+            *Scenario 5*
+            Given a game board, create a graphical representation. This will generate an image based on the board.
+        */
+        public Bitmap GetBoardAsImage()
+        {
+            return new Bitmap(BoardSize.Width, BoardSize.Height);
+        }
 
-        //private GameBoard Board = new GameBoard(new Gem[GridSize + 6, GridSize + 6]); // Matrix to hold the colour present in each grid cell
+        #region Private Helpers
 
-        private System.Threading.Timer timer;
-
-        private List<Gem> listGemColorStats;
-        private static int[,] delay;
-        private bool bHuzzah = false;
-
-
-        private DateTime backgroundMatchTimestamp = DateTime.Now;
         // Scan the gem Board and capture a coloured pixel from each cell
-        public bool ScanGrid()
+        private bool ScanGrid()
         {
             bool bMatchedAllPieces = true;
             int unmatchedCount = 0;
@@ -91,7 +129,7 @@ namespace BBot.GameDefinitions
             }
 
             */
-            
+
             // Across
             for (int x = 0; x < GridSize; x++)
             {
@@ -158,7 +196,7 @@ namespace BBot.GameDefinitions
                                 string thisPath = string.Format("{0}{1}.bmp", basePath, colorName);
 
                                 cropped.Save(thisPath);
-                                game.Debug(String.Format("Written out unknown gamepiece {0},{1}", x, y));
+                                game.DebugAction(String.Format("Written out unknown gamepiece {0},{1}", x, y));
 
                                 //System.Diagnostics.Debugger.Break();
                             }
@@ -193,196 +231,9 @@ namespace BBot.GameDefinitions
                     }*/
                 }
             }
-            if (bMatchedAllPieces)
-                backgroundMatchTimestamp = DateTime.Now;
 
             return bMatchedAllPieces && unmatchedCount < 3;
 
-            // Build known averages
-
-            //RED
-            /*
-             * 
-             *
-             * 0,0 0,2 0,5 0,6
-             * 1,4 1,6
-             * 3,2
-             * 5,2
-             * 6,7
-             */
-            /*
-            List<Tuple<int,int>> redPairs = new List<Tuple<int,int>>();
-
-            redPairs.Add(new Tuple<int,int>(0,0));
-            redPairs.Add(new Tuple<int, int>(0, 2));
-            redPairs.Add(new Tuple<int, int>(0, 5));
-            redPairs.Add(new Tuple<int, int>(0, 6));
-            redPairs.Add(new Tuple<int, int>(1, 3));
-            redPairs.Add(new Tuple<int, int>(1, 5));
-            redPairs.Add(new Tuple<int, int>(3, 2));
-            redPairs.Add(new Tuple<int, int>(5, 2));
-            redPairs.Add(new Tuple<int,int>(6,7));
-
-            //BLUE
-            /*
-             * 
-             *
-             * 1,1 1,2
-             * 2,6 2,7
-             * 3,6
-             * 4,7
-             * 5,0 5,3 5,6
-             * 6,5 6,6
-             * 7,3 7,5
-             */
-            /*
-            List<Tuple<int, int>> bluePairs = new List<Tuple<int, int>>();
-
-            bluePairs.Add(new Tuple<int, int>(1, 1));
-            bluePairs.Add(new Tuple<int, int>(1, 2));
-            bluePairs.Add(new Tuple<int, int>(2, 6));
-            bluePairs.Add(new Tuple<int, int>(2, 7));
-            bluePairs.Add(new Tuple<int, int>(3, 6));
-            bluePairs.Add(new Tuple<int, int>(4, 7));
-            bluePairs.Add(new Tuple<int, int>(5, 0));
-            bluePairs.Add(new Tuple<int, int>(5, 3));
-            bluePairs.Add(new Tuple<int, int>(5, 6));
-            bluePairs.Add(new Tuple<int, int>(6, 5));
-            bluePairs.Add(new Tuple<int, int>(6, 6));
-            bluePairs.Add(new Tuple<int, int>(7, 3));
-            bluePairs.Add(new Tuple<int, int>(7, 5));
-            */
-
-            //GREEN
-            /*
-             * 
-             *
-             * 0,7
-             * 3,1 3,5
-             * 4,5
-             * 6,4
-             * 7,1
-             */
-            /*
-            List<Tuple<int, int>> greenPairs = new List<Tuple<int, int>>();
-
-            greenPairs.Add(new Tuple<int, int>(0, 7));
-            greenPairs.Add(new Tuple<int, int>(3, 1));
-            greenPairs.Add(new Tuple<int, int>(3, 5));
-            greenPairs.Add(new Tuple<int, int>(4, 5));
-            greenPairs.Add(new Tuple<int, int>(6, 4));
-            greenPairs.Add(new Tuple<int, int>(7, 1));
-
-            */
-            //YELLOW
-            /*
-             * 0,3
-             * 1,7
-             * 2,1 2,3 2,4
-             * 4,0
-             * 5,5
-             * 6,2
-             * 7,6 7,7
-             */
-            /*
-            List<Tuple<int, int>> yellowPairs = new List<Tuple<int, int>>();
-
-            yellowPairs.Add(new Tuple<int, int>(0, 3));
-            yellowPairs.Add(new Tuple<int, int>(1, 7));
-            yellowPairs.Add(new Tuple<int, int>(2, 1));
-            yellowPairs.Add(new Tuple<int, int>(2, 3));
-            yellowPairs.Add(new Tuple<int, int>(2, 4));
-            yellowPairs.Add(new Tuple<int, int>(4, 0));
-            yellowPairs.Add(new Tuple<int, int>(5, 5));
-            yellowPairs.Add(new Tuple<int, int>(6, 2));
-            yellowPairs.Add(new Tuple<int, int>(7, 6));
-            yellowPairs.Add(new Tuple<int, int>(7, 7));
-            */
-
-            //PURPLE
-            /*
-             * 1,0 1,4 1,6
-             * 2,0
-             * 4,2 4,6
-             * 7,0 7,2
-             */
-            /*
-            List<Tuple<int, int>> purplePairs = new List<Tuple<int, int>>();
-
-            purplePairs.Add(new Tuple<int, int>(1, 0));
-            purplePairs.Add(new Tuple<int, int>(1, 4));
-            purplePairs.Add(new Tuple<int, int>(1, 6));
-            purplePairs.Add(new Tuple<int, int>(2,0));
-            purplePairs.Add(new Tuple<int, int>(4, 2));
-            purplePairs.Add(new Tuple<int, int>(4, 6));
-            purplePairs.Add(new Tuple<int, int>(7, 0));
-            purplePairs.Add(new Tuple<int, int>(7, 2));
-            */
-            //WHITE
-            /*
-             * 0,1 
-             * 2,2
-             * 3,3 3,4
-             * 6,1 6,3
-             * 7,4
-             */
-            /*
-            List<Tuple<int, int>> whitePairs = new List<Tuple<int, int>>();
-
-            whitePairs.Add(new Tuple<int, int>(0, 1));
-            whitePairs.Add(new Tuple<int, int>(2, 2));
-            whitePairs.Add(new Tuple<int, int>(3, 3));
-            whitePairs.Add(new Tuple<int, int>(3, 4));
-            whitePairs.Add(new Tuple<int, int>(6, 1));
-            whitePairs.Add(new Tuple<int, int>(6, 3));
-            whitePairs.Add(new Tuple<int, int>(7, 4));
-            */
-            //ORANGE
-            /*
-             * 0,4 
-             * 2,5
-             * 3,0 3,7
-             * 4,1 4,3 4,4
-             * 5,1 5,4
-             * 6,0
-             */
-            /*
-            List<Tuple<int, int>> orangePairs = new List<Tuple<int, int>>();
-
-            orangePairs.Add(new Tuple<int, int>(0, 4));
-            orangePairs.Add(new Tuple<int, int>(2, 5));
-            orangePairs.Add(new Tuple<int, int>(3, 0));
-            orangePairs.Add(new Tuple<int, int>(3, 7));
-            orangePairs.Add(new Tuple<int, int>(4, 1));
-            orangePairs.Add(new Tuple<int, int>(4, 3));
-            orangePairs.Add(new Tuple<int, int>(4, 4));
-            orangePairs.Add(new Tuple<int, int>(5, 1));
-            orangePairs.Add(new Tuple<int, int>(5, 4));
-            orangePairs.Add(new Tuple<int, int>(6, 0));
-
-
-
-            double rMean = 0;
-            
-            double gMean = 0;
-
-            double bMean = 0;
-
-            foreach (Tuple<int, int> pair in purplePairs)
-            {
-                rMean += pieceColors[pair.Item1,pair.Item2].R;
-                
-                gMean += pieceColors[pair.Item1, pair.Item2].G;
-
-                bMean += pieceColors[pair.Item1, pair.Item2].B;
-            }
-
-            rMean = rMean / purplePairs.Count;
-            gMean = gMean / purplePairs.Count;
-            bMean = bMean / purplePairs.Count;
-            listGemColorStats.Clear();
-            listGemColorStats.Add(Color.Blue, Color.FromArgb( rMean, gMean, bMean });
-            */
         }
 
 
@@ -553,7 +404,7 @@ namespace BBot.GameDefinitions
 
 
             //if (debugMode)
-            //game.Debug(String.Format("Move made: {0},{1} - {2},{3}", new Object[] { x1 - 2, y1 - 2, x2 - 2, y2 - 2 }));
+            //game.DebugAction(String.Format("Move made: {0},{1} - {2},{3}", new Object[] { x1 - 2, y1 - 2, x2 - 2, y2 - 2 }));
             // debugConsole.AppendText(String.Format("Move made: {0},{1} - {2},{3}", new Object[] { x1 - 2, y1 - 2, x2 - 2, y2 - 2 }) + System.Environment.NewLine);
             if (!game.GameExtents.HasValue)
                 return; // Last minute catch to ensure we have accurate location for mouse clicks
@@ -579,13 +430,59 @@ namespace BBot.GameDefinitions
             //System.Threading.Thread.Sleep(10);
             //SendInputClass.Click(mouseX2, mouseY2);
             //System.Threading.Thread.Sleep(10);
-            game.Debug(string.Format("clickX: {0}, clickY: {1}", mouseX1, mouseY1));
+            game.DebugAction(string.Format("clickX: {0}, clickY: {1}", mouseX1, mouseY1));
             //Thread.Sleep(1500);
             */
             //SendInputClass.Click(startPoint.X - 90, startPoint.Y + 150);
 
 
         }
+
+
+        private Bitmap GenerateBoardImage()
+        {
+            Bitmap bmpBoardGems = new Bitmap(BoardSize.Width, BoardSize.Height);
+
+
+            /*
+            using (Graphics g = Graphics.FromImage(bmpBoardGems))
+            {
+                // Across
+                for (int x = 0; x < Board.GridSize; x++)
+                {
+                    // Down
+                    for (int y = 0; y < Board.GridSize; y++)
+                    {
+                        Gem boardGem = Board.Board[x + 3, y + 3];
+
+
+
+                        g.FillRectangle(new SolidBrush(GemDefinitions.GetDisplayColorForGem(boardGem.Name)), x * Board.Cellsize, y * Board.Cellsize, Board.Cellsize, Board.Cellsize);
+
+                        if (boardGem.Modifiers.HasFlag(GemModifier.Star))
+                            g.FillRectangle(new SolidBrush(Color.White), x * Board.Cellsize + (Board.Cellsize / 4), y * Board.Cellsize + (Board.Cellsize / 4), Board.Cellsize / 2, Board.Cellsize / 2);
+
+                        if (boardGem.Modifiers.HasFlag(GemModifier.Hypercube))
+                            g.FillRectangle(new SolidBrush(Color.LimeGreen), x * Board.Cellsize, y * Board.Cellsize, Board.Cellsize, Board.Cellsize);
+
+
+                        if (boardGem.Modifiers.HasFlag(GemModifier.Multiplier))
+                            g.FillRectangle(new SolidBrush(Color.HotPink), x * Board.Cellsize + (Board.Cellsize / 4), y * Board.Cellsize + (Board.Cellsize / 4), Board.Cellsize / 2, Board.Cellsize / 2);
+
+                        if (boardGem.Modifiers.HasFlag(GemModifier.Background))
+                            g.FillRectangle(new SolidBrush(Color.Black), x * Board.Cellsize + (Board.Cellsize / 4), y * Board.Cellsize + (Board.Cellsize / 4), Board.Cellsize / 2, Board.Cellsize / 2);
+
+                        if (boardGem.Modifiers.HasFlag(GemModifier.Coin))
+                            g.FillRectangle(new SolidBrush(Color.Yellow), x * Board.Cellsize + (Board.Cellsize / 4), y * Board.Cellsize + (Board.Cellsize / 4), Board.Cellsize / 2, Board.Cellsize / 2);
+                    }
+                }
+            }*/
+
+            return bmpBoardGems;
+
+        }
+
+        #endregion
 
 
 

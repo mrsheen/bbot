@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
+using System.Threading;
 
 namespace BBot.GameEngine.States
 {
@@ -9,12 +10,14 @@ namespace BBot.GameEngine.States
     {
         public UnknownState()
         {
-            AssetName = "wholegame.background";
-            MinimumConfidence =1;
+            Name = "Game Finder";
+
+            gameScreen.AssetName =  "wholegame.background";
+            gameScreen.MinimumConfidence = 1;
         }
 
 
-        public override void Update()
+        public override void Update(CancellationToken cancelToken)
         {
             findStates.Push(new MedalState());
             findStates.Push(new StarState());
@@ -24,36 +27,9 @@ namespace BBot.GameEngine.States
             findStates.Push(new GameOverState());
             findStates.Push(new PlayNowState());
 
-            base.Update();
+            base.Update(cancelToken);
         }
-
-
-        public override bool HandleEvents()
-        {
-            if (StopRequested)
-                return true;
-
-            while (game.EventStack.Count > 0)
-            {
-                GameEvent myEvent = game.EventStack.Pop();
-
-                if (myEvent.eventType == EngineEventType.CHANGE_MENU)
-                {
-                    game.StateManager.PushState((BaseGameState)myEvent.parameters);
-                    return true;
-                }
-            }
-
-
-            if (!game.GameExtents.HasValue)
-            {
-                Update();
-                return true;
-            }
-
-
-            return false;
-        }        
+ 
         
         
     }

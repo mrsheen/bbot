@@ -10,15 +10,16 @@ using System.Configuration;
 
 namespace BBot.GameEngine
 {
-    public class GameEngine
+    public sealed class BBotGameEngine : IDisposable
     {
         public readonly Size GameSize = new Size(525, 435);
 
         private const int TickPeriod = 50;
+        private const int SearchBuffer = 40;
 
         public readonly Object GameScreenLOCK = new Object();
         public readonly Object PreviewScreenLOCK = new Object();
-
+        
 
 
         public Bitmap GameScreen; // Holds the captured area bitmap for each iteration
@@ -32,69 +33,72 @@ namespace BBot.GameEngine
 
         public bool DebugMode { get; set; }
 
-        public Stack<GameEvent> EventStack = new Stack<GameEvent>();
         public GameStateManager StateManager;
-        public FindBitmapWorker findBitmapWorker = new FindBitmapWorker();
 
-        public bool StopRequested = false;
+        // CTS to completely stop engine, and dispose of all resources
+        private CancellationTokenSource cancellationTokenSource;
 
         private System.Threading.Timer tickTimer;
 
+        private bool bStarted = false;
 
-        public GameEngine(Rectangle screenBounds)
+        public BBotGameEngine(Rectangle screenBounds)
         {
             ScreenRectangle = screenBounds;
             GameScreen = new Bitmap(ScreenRectangle.Width, ScreenRectangle.Height);
 
             StateManager = new GameStateManager(this);
-            StateManager.PushState(new UnknownState()); // Set initial state to menu
 
-
-            EventStack.Push(new GameEvent(EngineEventType.ENGINE_INIT, null)); // Create engine_init event
-
-            
-            //GameExtents = new Rectangle(Properties.Settings.Default.GameExtents, Properties.Settings.Default.GameSize);
             CaptureArea();
         }
 
         public void Start()
         {
-            tickTimer = new Timer(new TimerCallback(GameTick), null, 0, TickPeriod);
+            DebugAction("Starting game engine");
 
-            
+            if (bStarted)
+                return;
+
+            bStarted = true;
+
+            if (StateManager.NumberOfStates == 0)
+                StateManager.PushState(new UnknownState()); // Set initial state to menu
+
+
+            tickTimer = new Timer(new TimerCallback(GameTick), null, 0, TickPeriod);
+            cancellationTokenSource = new CancellationTokenSource();
         }
 
-
-        public void Cleanup()
+        public void Stop()
         {
-            StopRequested = true;
+            DebugAction("Stopping game engine");
+
             if (tickTimer != null)
             {
                 tickTimer.Dispose(); // Stop timer
                 tickTimer = null;
             }
-            EventStack.Push(new GameEvent(EngineEventType.ENGINE_SHUTDOWN, null)); // Create engine_shutdown event
+            if (cancellationTokenSource != null)
+            {
+                cancellationTokenSource.Cancel();
+            }
+
             lock (StateManager)
             {
                 StateManager.Cleanup();
             }
+
+            bStarted = false;
+            DebugAction("Game engine stopped");
         }
 
-        public delegate void DebugDelegate(string debugMessage);
-        public event DebugDelegate DebugEvent;
-
-        public void Debug(string debugMessage)
-        {
-            if (DebugEvent != null)
-                DebugEvent(debugMessage);
-        }
-
-        private const int SearchBuffer = 40;
+        public Action<String> DebugAction { get; set; }
+        
         public Rectangle SuggestedSearchArea
         {
             get
             {
-                if (_SuggestedSearchArea == null)
+                if (_SuggestedSearchArea == null || _SuggestedSearchArea.Width == 0)
                     _SuggestedSearchArea = ScreenRectangle;
 
                 return _SuggestedSearchArea;
@@ -216,151 +220,24 @@ namespace BBot.GameEngine
 
             return true;
         }
-    }
 
-    public class GameStateManager
-    {
-        public readonly Object StateManagerLOCK = new Object();
-        private Stack<BaseGameState> states;
-
-        private GameEngine game;
-        private Thread RunThread;
-
-        public GameStateManager(GameEngine gameRef)
+        public void Dispose()
         {
-            game = gameRef;
-            states = new Stack<BaseGameState>();
+            Stop();
 
-        }
-
-        public void Cleanup()
-        {
-
-            game.findBitmapWorker.StopRequested = true;
-
-            if (RunThread != null)
+            // free managed resources
+            if (GameScreen != null)
             {
-                if (states.Count > 0)
-                    states.Peek().StopRequested = true;
-
-                if (RunThread.ThreadState == ThreadState.Running)
-                    RunThread.Join();
-                RunThread = null;
+                GameScreen.Dispose();
+                GameScreen = null;
+            }
+            if (PreviewScreen != null)
+            {
+                PreviewScreen.Dispose();
+                PreviewScreen = null;
             }
 
-            while (states.Count > 0)
-                states.Pop().Cleanup();
-
-            game.findBitmapWorker.StopRequested = false;
-
         }
-
-        public void ChangeState(BaseGameState newState)
-        {
-            game.Debug(String.Format("Changing state from {0} to {1}", states.Count > 0 ? states.Peek().AssetName : "-none-", newState.AssetName));
-            if (states.Count > 0)
-                states.Pop().Cleanup();
-
-            states.Push(newState);
-            states.Peek().Init(game);
-        }
-
-        public void PushState(BaseGameState newState)
-        {
-            game.Debug(String.Format("Pushing state from {0} to {1}", states.Count > 0 ? states.Peek().AssetName : "-none-", newState.AssetName));
-            if (states.Count > 0)
-                states.Peek().Pause();
-
-            states.Push(newState);
-            states.Peek().Init(game);
-            ////SendInputClass.Move(0, 0);// TODO Move to form pause button in some way
-        }
-
-        public BaseGameState PopState()
-        {
-            BaseGameState state = null;
-            if (states.Count > 0)
-            {
-                state = states.Pop();
-                state.Cleanup();
-            }
-
-            if (states.Count > 0)
-                states.Peek().Resume();
-
-            return state;
-        }
-        public void Run()
-        {
-            if (Monitor.TryEnter(StateManagerLOCK))
-            {
-                try
-                {
-
-                    if (states.Count == 0)
-                        return;
-
-                    // Make certain bitmapworker will run
-                    game.findBitmapWorker.StopRequested = false;
-
-                    if (states.Peek().HandleEvents())
-                        return;
-
-                    if (RunThread == null || RunThread.ThreadState == ThreadState.Stopped)
-                    {
-                        RunThread = new Thread(new ThreadStart(states.Peek().Run));
-                        RunThread.Name = String.Format("RunThread-{0}-{1}", states.Peek().AssetName, DateTime.Now);
-                        return;
-                    }
-
-                    if (RunThread.IsAlive)
-                        return;
-
-                    try
-                    {
-                        if (RunThread.ThreadState == ThreadState.Unstarted)
-                            RunThread.Start();
-                    }
-                    catch (Exception) { }
-                }
-                finally
-                {
-                    Monitor.Exit(StateManagerLOCK);
-                }
-            }
-
-
-        }
-    }
-
-
-
-    public struct GameEvent
-    {
-        public EngineEventType eventType;
-        public Object parameters;
-        public GameEvent(EngineEventType type, Object p)
-        {
-            eventType = type;
-            parameters = p;
-        }
-
-
-    }
-
-    public enum EngineEventType
-    {
-        ENGINE_INIT,
-        ENGINE_SHUTDOWN,
-        FIND_STATE_HINT,
-        START_PLAYING,
-        PAUSE_PLAYING,
-        RESUME_PLAYING,
-        FINISH_PLAYING,
-        CHANGE_MENU
-
-
-
     }
 
 

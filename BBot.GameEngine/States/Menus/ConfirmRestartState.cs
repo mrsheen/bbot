@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
+using System.Threading;
 
 namespace BBot.GameEngine.States
 {
@@ -10,9 +11,10 @@ namespace BBot.GameEngine.States
     {
         public ConfirmRestartState()
         {
+            Name = "Confirm Restart";
 
-            AssetName = "wholegame.confirmrestart";
-            MinimumConfidence = 300000;
+            gameScreen.AssetName =  "wholegame.confirmrestart";
+            gameScreen.MinimumConfidence =  300000;
             
             transitionClickOffset.X = 405;
             transitionClickOffset.Y = 260;
@@ -21,12 +23,12 @@ namespace BBot.GameEngine.States
             transitionState = new PlayNowState();
         }
 
-        public override void Update()
+        public override void Update(CancellationToken cancelToken)
         {
             findStates.Push(new PlayNowState());
             findStates.Push(new MenuState());
 
-            base.Update();
+            base.Update(cancelToken);
         }
 
 

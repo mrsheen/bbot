@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
+using System.Threading;
 
 namespace BBot.GameEngine.States
 {
@@ -10,8 +11,10 @@ namespace BBot.GameEngine.States
         
         public MenuState()
         {
-            AssetName = "wholegame.menu";
-            MinimumConfidence = 200000;
+            Name = "Game Paused Menu";
+
+            gameScreen.AssetName =  "wholegame.menu";
+            gameScreen.MinimumConfidence =  200000;
 
             transitionClickOffset.X = 340;
             transitionClickOffset.Y = 190;
@@ -19,11 +22,11 @@ namespace BBot.GameEngine.States
             transitionState = new ConfirmRestartState();
         }
 
-        public override void Update()
+        public override void Update(CancellationToken cancelToken)
         {
             findStates.Push(new ConfirmRestartState());
             
-            base.Update();
+            base.Update(cancelToken);
         }
 
 

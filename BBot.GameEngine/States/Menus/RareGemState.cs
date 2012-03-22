@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
+using System.Threading;
 
 namespace BBot.GameEngine.States
 {
@@ -11,8 +12,10 @@ namespace BBot.GameEngine.States
 
         public RareGemState()
         {
-            AssetName = "wholegame.raregem";
-            MinimumConfidence = 300000;
+            Name = "Rare Gem";
+
+            gameScreen.AssetName =  "wholegame.raregem";
+            gameScreen.MinimumConfidence =  300000;
 
             transitionClickOffset.X = 210;
             transitionClickOffset.Y = 390;
@@ -20,11 +23,11 @@ namespace BBot.GameEngine.States
             transitionState = new PlayNowState();
         }
 
-        public override void Update()
+        public override void Update(CancellationToken cancelToken)
         {
             findStates.Push(new MenuState());
             findStates.Push(new PlayNowState());
-            base.Update();
+            base.Update(cancelToken);
         }
     }
 }

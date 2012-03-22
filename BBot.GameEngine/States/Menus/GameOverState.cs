@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
+using System.Threading;
 
 namespace BBot.GameEngine.States
 {
@@ -10,8 +11,10 @@ namespace BBot.GameEngine.States
     {
         public GameOverState()
         {
-            AssetName = "wholegame.gameover";
-            MinimumConfidence = 350000;
+            Name = "Game Results";
+
+            gameScreen.AssetName =  "wholegame.gameover";
+            gameScreen.MinimumConfidence =  350000;
 
             transitionClickOffset.X = 260;
             transitionClickOffset.Y = 315;
@@ -20,14 +23,14 @@ namespace BBot.GameEngine.States
             transitionState = new RareGemState();
         }
 
-        public override void Update()
+        public override void Update(CancellationToken cancelToken)
         {
             findStates.Push(new MedalState());
             findStates.Push(new PlayNowState());
             findStates.Push(new MenuState());
             findStates.Push(new StarState());
 
-            base.Update();
+            base.Update(cancelToken);
         }
 
 

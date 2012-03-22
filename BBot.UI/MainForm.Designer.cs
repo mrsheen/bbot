@@ -40,6 +40,7 @@
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.findGameScreenToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.gameState = new System.Windows.Forms.RichTextBox();
+            this.lblHelpText = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.preview)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.menuStrip1.SuspendLayout();
@@ -129,11 +130,20 @@
             this.gameState.TabIndex = 26;
             this.gameState.Text = "";
             // 
+            // lblHelpText
+            // 
+            this.lblHelpText.AutoSize = true;
+            this.lblHelpText.Location = new System.Drawing.Point(12, 79);
+            this.lblHelpText.Name = "lblHelpText";
+            this.lblHelpText.Size = new System.Drawing.Size(0, 13);
+            this.lblHelpText.TabIndex = 27;
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(833, 782);
+            this.Controls.Add(this.lblHelpText);
             this.Controls.Add(this.gameState);
             this.Controls.Add(this.menuStrip1);
             this.Controls.Add(this.pictureBox1);
@@ -166,6 +176,7 @@
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem findGameScreenToolStripMenuItem;
         private System.Windows.Forms.RichTextBox gameState;
+        private System.Windows.Forms.Label lblHelpText;
     }
 }
 

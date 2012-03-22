@@ -5,80 +5,8 @@ using System.Drawing;
 using AForge.Imaging.Filters;
 using AForge.Imaging;
 
-
-
 namespace BBot.GameDefinitions
 {
-    class blah
-    {
-        /*
-        private Bitmap GetBitmapByType(StateBitmapType bitmapType, Size? size = null, PixelFormat? format = null)
-        {
-            Bitmap rootBitmap = null;
-            Bitmap filterBitmap = null;
-            string assetName = String.Empty;
-            AForge.Imaging.Filters.Add addFilter;
-            try
-            {
-                // Add given masks
-                switch (bitmapType)
-                {
-                    case StateBitmapType.SmartMask:
-                        rootBitmap = GetBitmap(this.AssetName, size, format);
-                        assetName = String.Format("{0}.smartmask", this.AssetName);
-                        filterBitmap = GetBitmap(assetName, size, format);
-                        if (filterBitmap != null)
-                        { // Special smartmask found, use it
-                            rootBitmap = GetBitmap("wholegame.blankmask", size, format);
-                            addFilter = new AForge.Imaging.Filters.Add(filterBitmap);
-                            addFilter.ApplyInPlace(rootBitmap);
-                            goto case StateBitmapType.Blue;
-                        }
-                        // Use normal tofind but add background as mask
-                        assetName = "wholegame.background";
-                        filterBitmap = GetBitmap(assetName, size, format);
-                        if (filterBitmap != null)
-                        {
-                            addFilter = new AForge.Imaging.Filters.Add(filterBitmap);
-                            addFilter.ApplyInPlace(rootBitmap);
-                        }
-                        goto case StateBitmapType.Blue; // farking c#: http://stackoverflow.com/a/174223
-                    case StateBitmapType.Blue:
-                        if (rootBitmap == null)
-                            rootBitmap = GetBitmap("wholegame.blankmask", size, format);
-                        assetName = String.Format("{0}.blue", this.AssetName);
-                        filterBitmap = GetBitmap(assetName, size, format);
-                        if (filterBitmap != null)
-                        {
-                            addFilter = new AForge.Imaging.Filters.Add(filterBitmap);
-                            addFilter.ApplyInPlace(rootBitmap);
-                        }
-                        goto case StateBitmapType.Mask; // farking c#: http://stackoverflow.com/a/174223
-                    case StateBitmapType.Mask:
-                        // Get area to find
-                        if (rootBitmap == null)
-                            rootBitmap = GetBitmap("wholegame.blankmask", size, format);
-                        assetName = String.Format("{0}.mask", this.AssetName);
-                        filterBitmap = GetBitmap(assetName, size, format);
-                        if (filterBitmap != null)
-                        {
-                            addFilter = new AForge.Imaging.Filters.Add(filterBitmap);
-                            addFilter.ApplyInPlace(rootBitmap);
-                        }
-                        break;
-                    case StateBitmapType.RawImage:
-                        rootBitmap = GetBitmap(this.AssetName, size, format);
-                        break;
-                    default:
-                        break; // do nothing
-                }
-
-            }
-            catch (Exception) { }
-            return rootBitmap;
-        }*/
-
-    }
     public class FindBitmapWorker
     {
         private const bool Debug = true;
@@ -527,143 +455,7 @@ namespace BBot.GameDefinitions
             return match;
 
         }
-
-
-        public MatchingPoint CheckExactMatchReverse(Bitmap bmpSource, Bitmap bmpToFind, Bitmap bmpMask, int minimumCertainty)
-        {
-            MatchingPoint match = new MatchingPoint();
-
-            match.X = 0;
-            match.Y = 0;
-            match.MinimumCertainty = minimumCertainty;
-
-            Subtract subFilter = (bmpMask != null) ? new Subtract(bmpMask) : null;
-
-            if (subFilter != null)
-                subFilter.ApplyInPlace(bmpToFind);
-            Difference filter = new Difference(bmpToFind);
-
-            Bitmap bmpDiff;
-
-            if (subFilter != null)
-                subFilter.ApplyInPlace(bmpSource);
-
-            bmpDiff = filter.Apply(bmpSource);
-
-            #region debug
-            Bitmap bmpRenderedDiff;
-            Bitmap bmpRenderedToFind;
-            if (Debug)
-            {
-                bmpRenderedDiff = bmpSource.Clone(new Rectangle(match.X, match.Y, bmpToFind.Width, bmpToFind.Height), bmpToFind.PixelFormat);
-                bmpRenderedToFind = bmpSource.Clone(new Rectangle(match.X, match.Y, bmpToFind.Width, bmpToFind.Height), bmpToFind.PixelFormat);
-
-                using (Graphics g = Graphics.FromImage(bmpRenderedDiff))
-                {
-                    System.Drawing.Imaging.ColorMatrix cm = new System.Drawing.Imaging.ColorMatrix();
-                    cm.Matrix00 = cm.Matrix11 = cm.Matrix22 = cm.Matrix44 = 1;
-                    cm.Matrix43 = 1.0F;
-
-                    System.Drawing.Imaging.ImageAttributes ia = new System.Drawing.Imaging.ImageAttributes();
-
-                    ia.SetColorMatrix(cm);
-
-                    g.DrawImage(bmpDiff, new Rectangle(0, 0, bmpDiff.Width, bmpDiff.Height), 0, 0, bmpDiff.Width, bmpDiff.Height, GraphicsUnit.Pixel, ia);
-                }
-
-                using (Graphics g = Graphics.FromImage(bmpRenderedToFind))
-                {
-                    System.Drawing.Imaging.ColorMatrix cm = new System.Drawing.Imaging.ColorMatrix();
-                    cm.Matrix00 = cm.Matrix11 = cm.Matrix22 = cm.Matrix44 = 1;
-                    cm.Matrix43 = 1.0F;
-
-                    System.Drawing.Imaging.ImageAttributes ia = new System.Drawing.Imaging.ImageAttributes();
-
-                    ia.SetColorMatrix(cm);
-
-                    g.DrawImage(bmpToFind, new Rectangle(0, 0, bmpToFind.Width, bmpToFind.Height), 0, 0, bmpToFind.Width, bmpToFind.Height, GraphicsUnit.Pixel, ia);
-                }
-            }
-            #endregion
-
-            int testRed = 0;
-            int testBlue = 0;
-            int testGreen = 0;
-            ImageStatistics stats = new ImageStatistics(bmpDiff);
-            if (Debug)
-            {
-                ImageStatistics stats2 = new ImageStatistics(bmpRenderedDiff);
-                ImageStatistics stats3 = new ImageStatistics(bmpRenderedToFind);
-                ImageStatistics stats4 = new ImageStatistics(bmpToFind);
-            }
-            for (int i = 0; i < 256; i++)
-            {
-                testRed += stats.Red.Values[i] * i;
-                testGreen += stats.Green.Values[i] * i;
-                testBlue += stats.Blue.Values[i] * i;
-            }
-
-            int testAvg = (int)((testRed + testGreen + testBlue) / 3);
-
-            match.Certainty = testAvg;
-            match.Confident = (testAvg <= match.MinimumCertainty);
-            match.Resolution = 1;
-
-            return match;
-
-        }
-
-        private int CheckMatch(int x, int y, int[,] fullScreen, int[,] gameTitle)
-        {
-            int match = 0;
-
-            int gWidth = gameTitle.GetLength(0);
-            int gHeight = gameTitle.GetLength(1);
-
-            // Get subset of fullscreen to compare
-            int[,] subtracted = new int[gWidth, gHeight];
-
-            // Subtract title portion form fullscreen
-            for (int i = 0; i < gWidth; i++)
-            {
-                for (int j = 0; j < gHeight; j++)
-                {
-                    subtracted[i, j] = Math.Abs(fullScreen[i + x, j + y] - gameTitle[i, j]);
-                }
-            }
-
-            // Sum all pixel values
-            for (int i = 0; i < gWidth; i++)
-            {
-                for (int j = 0; j < gHeight; j++)
-                {
-                    match += subtracted[i, j];
-                }
-            }
-
-            return match;
-
-        }
-
-        private static int[,] GetRedChannel(Bitmap bmpSource)
-        {
-            Rectangle r2 = new Rectangle(0, 0, bmpSource.Width, bmpSource.Height);
-
-
-            int[,] arrChannel = new int[r2.Width, r2.Height];
-            for (int i = 0; i < r2.Width; i++)
-            {
-                for (int j = 0; j < r2.Height; j++)
-                {
-                    Color pixelColor = bmpSource.GetPixel(i, j);
-                    arrChannel[i, j] = pixelColor.R;
-                }
-            }
-
-            return arrChannel;
-
-        }
-
+        
         private Bitmap ResizeBitmap(Bitmap bmpSource, double scaleFactor)
         {
             Bitmap scaled = new Bitmap((int)(bmpSource.Width * scaleFactor), (int)(bmpSource.Height * scaleFactor));
@@ -675,7 +467,6 @@ namespace BBot.GameDefinitions
             return scaled;
         }
 
-       
     }
 
     public struct MatchingPoint
@@ -687,5 +478,6 @@ namespace BBot.GameDefinitions
         public double MaxCertaintyDelta;
         public bool Confident;
         public int Resolution;
+        public bool AbortedSearch;
     }
 }

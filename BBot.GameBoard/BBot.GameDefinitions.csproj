@@ -9,7 +9,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>BBot.GameDefinitions</RootNamespace>
-    <AssemblyName>GameDefinitions</AssemblyName>
+    <AssemblyName>BBot.GameDefinitions</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -53,34 +53,33 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FindBitmap.cs" />
-    <Compile Include="GameBoard.cs" />
+    <Compile Include="FindBitmapWorker.cs" />
+    <Compile Include="BoardDefinition.cs" />
+    <Compile Include="GameScreenDefinition.cs" />
     <Compile Include="GemDefinitions.cs" />
-    <Compile Include="Heatmap.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Assets\wholegame.star.smartmask.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.star.mask.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.star.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.star.blue.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.raregem.mask.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.raregem.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.playnow.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.playing.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.menu.mask.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.menu.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.medal.mask.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.medal.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.gameover.mask.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.gameover.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.confirmrestart.mask.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.confirmrestart.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.blankmask.bmp" />
-    <EmbeddedResource Include="Assets\wholegame.background.bmp" />
-    <EmbeddedResource Include="Assets\raw source.bmp" />
     <EmbeddedResource Include="Assets\palette_2.jpg" />
-    <EmbeddedResource Include="Assets\Instruction.bmp" />
+    <EmbeddedResource Include="Assets\raw source.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.background.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.blankmask.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.confirmrestart.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.confirmrestart.mask.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.gameover.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.gameover.mask.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.medal.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.medal.mask.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.menu.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.menu.mask.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.playing.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.playnow.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.raregem.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.raregem.mask.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.star.blue.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.star.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.star.mask.bmp" />
+    <EmbeddedResource Include="Assets\wholegame.star.smartmask.bmp" />
     <Content Include="gemDefinitions.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

@@ -13,9 +13,10 @@ namespace BBot.GameEngine.States
 
         public PlayingState()
         {
+            Name = "Playing";
 
-            AssetName = "wholegame.playing";
-            MinimumConfidence = 200000;
+            gameScreen.AssetName =  "wholegame.playing";
+            gameScreen.MinimumConfidence =  200000;
 
             /*listGemColorStats = GemDefinitions.GetGemDefinitions();
             delay = new int[GridSize + 6, GridSize + 6];
@@ -52,10 +53,10 @@ namespace BBot.GameEngine.States
         }
 
         //public override void Resume() { }
-
+        /*
         public override bool HandleEvents()
         {
-            /*
+            
             if (base.HandleEvents() || bHuzzah)
                 return true;
 
@@ -64,12 +65,12 @@ namespace BBot.GameEngine.States
                 Thread.Sleep(500);
                 timer = new Timer(new TimerCallback(GameOver), game, 66 * 1000, Timeout.Infinite);
             }
-            */
+            
             return false;
             
-        }
+        }*/
 
-        public override void Update()
+        public override void Update(CancellationToken cancelToken)
         {
             /*
             if (bHuzzah)
@@ -91,9 +92,9 @@ namespace BBot.GameEngine.States
 
         }
 
-        public override void Draw()
+        public override void Draw(CancellationToken cancelToken)
         {
-            TickDownDelay(game);
+            TickDownDelay(gameEngine);
 
 
             
@@ -110,14 +111,14 @@ namespace BBot.GameEngine.States
         private void GameOver(Object state)
         {
             //SendInputClass.Move(0, 0);
-            GameEngine game = (GameEngine)state;
+            BBotGameEngine game = (BBotGameEngine)state;
             //bHuzzah = true;
             Thread.Sleep(10 * 1000);
             game.StateManager.ChangeState(new StarState());
         }
 
 
-        private void GetBoardFromGame(GameEngine game)
+        private void GetBoardFromGame(BBotGameEngine game)
         {
             /*
             bContinue = false;
@@ -146,7 +147,7 @@ namespace BBot.GameEngine.States
 
         private DateTime heatmapTimestamp = DateTime.Now;
         private DateTime delayTimestamp = DateTime.Now;
-        private void TickDownDelay(GameEngine game)
+        private void TickDownDelay(BBotGameEngine game)
         {
             // Loop variables
             int iX;

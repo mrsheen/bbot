@@ -1,29 +1,4 @@
-﻿/*
-The MIT License
-
-Copyright (c) 2011 Mark Ashley Bell
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
-
-
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 using System;
 using System.Drawing;
 using System.Configuration;
@@ -31,12 +6,14 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using BBot.GameEngine;
+using BBot.GameEngine.States;
 
 namespace BBot.UI
 {
     public partial class MainForm : Form
     {
-        //GameEngine gameEngine;
+        private BBotGameEngine gameEngine;
+        private Type selectedState;
 
         private System.Windows.Forms.Timer tUpdateDisplay = new System.Windows.Forms.Timer(); // Timer that performs the moves
 
@@ -51,81 +28,90 @@ namespace BBot.UI
             tUpdateDisplay.Enabled = true;
             tUpdateDisplay.Stop();
 
-
-            /*
             // Shift-Ctrl-Alt Escape will exit the play loop
             WIN32.RegisterHotKey(Handle, 100, WIN32.KeyModifiers.Control | WIN32.KeyModifiers.Shift | WIN32.KeyModifiers.Alt, Keys.Escape);
 
-            this.FormClosing += new FormClosingEventHandler(Form1_FormClosing);
-            */
-            // Put the window at top right
-            //this.Location = new Point(Screen.PrimaryScreen.Bounds.Width + 20, 0);
+            this.FormClosing += MainForm_FormClosing;
+
+            // Put the window at top left
             this.Location = new Point(20, 20);
-
-            // Initially set the preview image
-            //this.preview.Image = Image.FromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("BBot.Assets.Instruction.bmp"));
-            
-            InitGameEngine(Screen.PrimaryScreen.Bounds); // Start manually
-
         }
 
         private void InitGameEngine(Rectangle screenBounds)
         {
-            DebugMessage("Initializing game engine");
-            //gameEngine = new GameEngine(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
-            /*gameEngine = new GameEngine(screenBounds);
-
+            gameEngine = new BBotGameEngine(screenBounds);
 
             bool debugMode = Convert.ToBoolean(ConfigurationManager.AppSettings["DebugMode"]);
-            
+
 #if DEBUG
             debugMode = true;
 #endif
-
-            if (gameEngine != null)
-                gameEngine.DebugMode = debugMode;
-
-            //System.IO.Directory.CreateDirectory(workingPath);
-
-            gameEngine.DebugEvent += DebugMessage;
-            gameEngine.findBitmapWorker.ImageSearchEvent += ImageSearch;
-
-            */
+            gameEngine.DebugMode = debugMode;
+            gameEngine.DebugAction = new Action<string>(UpdateDebug);
 
             playButton.Enabled = true;
             playButton.Text = "Start";
+            lblHelpText.Text = "";
+
 
             tUpdateDisplay.Start();
 
         }
+        
+        private void StartGame()
+        {
+            if (gameEngine == null)
+                InitGameEngine(Screen.PrimaryScreen.Bounds);
 
-        private void KillGameEngine()
+            if (selectedState != null)
+            {
+                try
+                {
+                    gameEngine.StateManager.PushState((BaseGameState)Activator.CreateInstance(selectedState));
+                }
+                catch (InvalidCastException) { }
+                finally
+                {
+                    selectedState = null;
+                }
+            }
+
+            gameEngine.Start();
+
+            playButton.Enabled = false;
+            playButton.Text = "-Running-";
+
+            lblHelpText.Text = "If the game engine becomes unresponsive, press Ctrl-Alt-Shift-Escape to stop";
+
+        }
+
+        private void StopGame()
         {
             tUpdateDisplay.Stop();
 
-            //if (startGameThread != null)
-            //{
-            //    if (states.Count > 0)
-            //        states.Peek().StopRequested = true;
+            if (gameEngine != null)
+                gameEngine.Stop();
 
+            playButton.Enabled = true;
+            playButton.Text = "Start";
 
-            //    startGameThread.Join();
-            //    startGameThread = null;
-            //}
-            /*
+            lblHelpText.Text = "";
+        }
+
+        private void DisposeGameEngine()
+        {
             if (gameEngine != null)
             {
-                gameEngine.Cleanup();
-
-                gameEngine.DebugEvent -= DebugMessage;
-                gameEngine.findBitmapWorker.ImageSearchEvent -= ImageSearch;
+                gameEngine.Stop();
+                gameEngine.Dispose();
             }
 
             gameEngine = null;
-            */
-            playButton.Enabled = true;
-            playButton.Text = "Start";
+            lblHelpText.Text = "";
         }
+
+
+
 
         private readonly object PlotDetailsLOCK = new Object();
         private DateTime imageSnapshotTimestamp = DateTime.Now;
@@ -143,19 +129,7 @@ namespace BBot.UI
 
 
             }*/
-
-            lock (DebugMessagesLOCK)
-            {
-
-                foreach (string debugMessage in messagesWaiting)
-                {
-                    UpdateDebug(debugMessage);
-
-                }
-                messagesWaiting.Clear();
-
-            }
-
+            
             if ((DateTime.Now - imageSnapshotTimestamp).Seconds < 1)
                 return; // Only update image every 1 second
 
@@ -206,17 +180,6 @@ namespace BBot.UI
             }
         }
 
-        private readonly object DebugMessagesLOCK = new Object();
-
-        private List<string> messagesWaiting = new List<string>();
-        private void DebugMessage(string debugMessage)
-        {
-            lock (DebugMessagesLOCK)
-            {
-                messagesWaiting.Add(debugMessage);
-            }
-
-        }
 
         private void UpdateDebug(string debugMessage)
         {
@@ -227,14 +190,11 @@ namespace BBot.UI
             }
             else
             {
-
-
                 debugConsole.AppendText(String.Format("{0} - {1}", DateTime.Now, debugMessage) + Environment.NewLine);
                 debugConsole.ScrollToCaret();
-
             }
-
         }
+
         /*
         private List<FindBitmapWorker.ImageSearchDetails> detailsWaiting = new List<FindBitmapWorker.ImageSearchDetails>();
         private void ImageSearch(FindBitmapWorker.ImageSearchDetails details)
@@ -303,13 +263,13 @@ namespace BBot.UI
         }
         */
 
-        /*
-        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+
+        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             // Kill the system-wide hotkey on app exit
             WIN32.UnregisterHotKey(Handle, 100);
-            KillGameEngine();
-        }*/
+            DisposeGameEngine();
+        }
 
         // Set up hotkeys: we need one to be able to quit the loop because 
         // while the bot is running the mouse is hijacked
@@ -320,7 +280,7 @@ namespace BBot.UI
             switch (m.Msg)
             {
                 case WM_HOTKEY:
-                    KillGameEngine();
+                    StopGame();
                     break;
             }
 
@@ -332,58 +292,20 @@ namespace BBot.UI
         {
             StartGame();
         }
-
-        private void btnRestart_Click(object sender, EventArgs e)
-        {/*
-            if (gameEngine != null)
-                KillGameEngine();
-            */
-            StartGame();
-        }
-
-        private Type selectedState;
-        private void StartGame()
-        {/*
-            if (gameEngine == null)
-                InitGameEngine(Screen.PrimaryScreen.Bounds);
-
-            */
-            if (selectedState != null)
-            {/*
-                try
-                {
-                    gameEngine.StateManager.PushState((BaseGameState)Activator.CreateInstance(selectedState));
-                    gameEngine.EventStack.Push(new GameEvent(EngineEventType.FIND_STATE_HINT, null));
-                }
-                catch (ApplicationException)
-                {
-
-                }
-                finally
-                {
-                    selectedState = null;
-                }*/
-            }
-
-            /*gameEngine.Start();*/
-
-            playButton.Enabled = false;
-            playButton.Text = "-Press Escape to stop-";
-
-        }
+        
 
         public Dictionary<string, Type> states = new Dictionary<string, Type>();
 
         private void GenerateContextOptions()
-        {/*
+        {
             states.Clear();
-            states.Add("Restart", typeof(States.ConfirmRestartState));
-            states.Add("Game Results", typeof(States.GameOverState));
-            states.Add("Game Menu", typeof(States.MenuState));
-            states.Add("Play Now", typeof(States.PlayNowState));
-            states.Add("Rare Gem", typeof(States.RareGemState));
-            states.Add("Star Award", typeof(States.StarState));
-            states.Add("Medal", typeof(States.MedalState));
+            states.Add("Restart", typeof(ConfirmRestartState));
+            states.Add("Game Results", typeof(GameOverState));
+            states.Add("Game Menu", typeof(MenuState));
+            states.Add("Play Now", typeof(PlayNowState));
+            states.Add("Rare Gem", typeof(RareGemState));
+            states.Add("Star Award", typeof(StarState));
+            states.Add("Medal", typeof(MedalState));
 
 
             foreach (KeyValuePair<String, Type> state in states)
@@ -396,7 +318,7 @@ namespace BBot.UI
 
                 this.contextMenuStrip1.Items.Add(item);
 
-            }*/
+            }
 
         }
 
@@ -411,9 +333,6 @@ namespace BBot.UI
         List<CaptureForm> captureForms = new List<CaptureForm>();
         private void findGameScreenToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            /*if (gameEngine != null)
-                KillGameEngine();
-            */
             foreach (Screen screen in Screen.AllScreens)
             {
 #if DEBUG
@@ -460,19 +379,18 @@ namespace BBot.UI
                 }
 
                 captureForms.Clear();
-                /*
+
                 if (gameEngine != null)
-                    return;
-
-
+                    DisposeGameEngine();
 
                 InitGameEngine(screenBounds);
                 gameEngine.UpdateSuggestedSearch(searchArea, true);
-                gameEngine.CaptureArea();*/
+                gameEngine.CaptureArea();
+
+                UpdateDebug(String.Format("Updated game search area, press '{0}' to begin",playButton.Text));
 
             }
         }
-
 
     }
 }

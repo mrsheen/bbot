@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
+using System.Threading;
 
 
 namespace BBot.GameEngine.States
@@ -14,7 +15,6 @@ namespace BBot.GameEngine.States
         
 
         private Bitmap bmpPreviousGameScreen;
-        private bool bFirstRun = false;
 
         private DateTime previousTimestamp;
         private int checkCount;
@@ -22,12 +22,11 @@ namespace BBot.GameEngine.States
 
         protected BaseMenuState() { }
         
-        public override void Init(GameEngine gameRef)
+        public override void Init(BBotGameEngine gameRef)
         {
             base.Init(gameRef);
 
             bmpPreviousGameScreen = new Bitmap(1, 1);
-            bFirstRun = true;
             //SendInputClass.Move(0, 0); //!TODO!Move to a better location
 
             previousTimestamp = DateTime.Now.AddMilliseconds(-5001);
@@ -35,63 +34,24 @@ namespace BBot.GameEngine.States
 
         }
 
-
-        public override bool HandleEvents()
-        {
-            if (base.HandleEvents())
-                return true;
-
-            while (game.EventStack.Count > 0)
-            {
-                GameEvent myEvent = game.EventStack.Pop();
-
-                if (myEvent.eventType == EngineEventType.CHANGE_MENU)
-                {
-                    game.StateManager.ChangeState((BaseGameState)myEvent.parameters);
-                    return true;
-                }
-
-
-                if (myEvent.eventType == EngineEventType.RESUME_PLAYING)
-                {
-
-                    game.StateManager.ChangeState((BaseGameState)myEvent.parameters);
-                    return true;
-                }
-
-            }
-
-            if (bFirstRun)
-            {
-                System.Threading.Thread.Sleep(200);
-                bFirstRun = false;
-                return true;
-            }
-
-
-
-
-            return false;
-        }
-
-        public override void Update()
+        public override void Update(CancellationToken token)
         {
             //!TODO!Timer on this
             if ((DateTime.Now - previousTimestamp).TotalMilliseconds < 5000)
             {
-                findStates.Clear(); // need to empty this, it fills up from multiple Update() calls
+                findStates.Clear(); // need to empty this, it fills up from multiple Update(CancellationToken cancelToken) calls
                 return; // Only every five seconds
             }
-            game.Debug("Looking for menus from within unknown state");
+            gameEngine.DebugAction("Looking for menus from within unknown state");
             checkCount++;
-            
+
             /*
             MatchingPoint match;
 
             findStates.Push(this);
 
-            game.Debug("Looking for states from " + this.AssetName);
-            game.Debug("Other states: " + findStates.Count);
+            game.DebugAction("Looking for states from " + this.AssetName);
+            game.DebugAction("Other states: " + findStates.Count);
             
 
             while (findStates.Count > 0)
@@ -114,12 +74,13 @@ namespace BBot.GameEngine.States
                         //SendInputClass.Move(0, 0);
                         // Assume next state
                         game.EventStack.Push(new GameEvent(EngineEventType.CHANGE_MENU, transitionState));
+                        game.StateManager.ChangeState((BaseGameState)myEvent.parameters);
                         return;
                     }
 
                     // Started playing
                     game.EventStack.Push(new GameEvent(EngineEventType.CHANGE_MENU, state));
-                    game.Debug("MenuState found: " + state.AssetName);
+                    game.DebugAction("MenuState found: " + state.AssetName);
                     return;
                 }
 
@@ -133,12 +94,12 @@ namespace BBot.GameEngine.States
             {
                 // Started playing
                 game.EventStack.Push(new GameEvent(EngineEventType.RESUME_PLAYING, playingState));
-                game.Debug("Playingstate found");
+                game.DebugAction("Playingstate found");
                 return;
             }
             */
-            //game.Debug("Nothing found, playing again");
-            game.Debug("Nothing found");
+            //game.DebugAction("Nothing found, playing again");
+            gameEngine.DebugAction("Nothing found");
 
             checkCount = checkCount % DeepSearch;
             
@@ -147,7 +108,7 @@ namespace BBot.GameEngine.States
             return;
         }
 
-        public override void Draw()
+        public override void Draw(CancellationToken cancelToken)
         {
             //lock (game.GameScreen)
             //{

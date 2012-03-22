@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
+using System.Threading;
 
 namespace BBot.GameEngine.States
 {
@@ -10,8 +11,10 @@ namespace BBot.GameEngine.States
     {
         public MedalState()
         {
-            AssetName = "wholegame.medal";
-            MinimumConfidence = 350000;
+            Name = "Medal Award";
+
+            gameScreen.AssetName =  "wholegame.medal";
+            gameScreen.MinimumConfidence =  350000;
 
             transitionClickOffset.X = 270;
             transitionClickOffset.Y = 345;
@@ -20,13 +23,13 @@ namespace BBot.GameEngine.States
             transitionState = new GameOverState();
         }
 
-        public override void Update()
+        public override void Update(CancellationToken cancelToken)
         {
             findStates.Push(new PlayNowState());
             findStates.Push(new MenuState());
             findStates.Push(new StarState());
 
-            base.Update();
+            base.Update(cancelToken);
         }
 
 
