@@ -55,6 +55,36 @@ namespace BBot
         private void CaptureForm_MouseDown(object sender, MouseEventArgs e)
         {
             this.GameBounds = new Rectangle(e.Location.X,e.Location.Y,0,0);
+            //this.RaisePaintEvent(this, new PaintEventArgs(this.CreateGraphics(), this.RectangleToClient(new Rectangle())));
+        }
+
+        DateTime moveTimestamp = DateTime.Now;
+        private void CaptureForm_MouseMove(object sender, MouseEventArgs e)
+        {
+            if ((DateTime.Now-moveTimestamp).Milliseconds < 25)
+                return;
+
+            if (!this.GameBounds.HasValue)
+                return;
+
+            Rectangle bounds = GameBounds.Value;
+
+            bounds.Width = Math.Abs(bounds.X - e.X);
+            bounds.Height = Math.Abs(bounds.Y - e.Y);
+
+            // Swap x,y if top-left
+            bounds.X = Math.Min(bounds.X, e.X);
+            bounds.Y = Math.Min(bounds.Y, e.Y);
+
+            this.GameBounds = bounds;
+
+            bounds.X -= 100;
+            bounds.Y -= 100;
+            bounds.Width += 200;
+            bounds.Height += 200;
+
+            this.Invalidate(bounds);
+
         }
 
         private void CaptureForm_MouseUp(object sender, MouseEventArgs e)
@@ -77,5 +107,19 @@ namespace BBot
             Close();
 
         }
+
+        private void CaptureForm_Paint(object sender, PaintEventArgs e)
+        {
+            if (!this.GameBounds.HasValue)
+                return;
+
+            using (Brush brush = new SolidBrush(Color.Red))
+            {
+                e.Graphics.FillRectangle(brush, this.GameBounds.Value);
+            }
+            moveTimestamp = DateTime.Now;
+        }
+
+
     }
 }

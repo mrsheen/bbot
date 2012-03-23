@@ -17,10 +17,11 @@ namespace BBot.GameEngine
         private const int TickPeriod = 50;
         private const int SearchBuffer = 40;
 
-        public readonly Object GameScreenLOCK = new Object();
-        public readonly Object PreviewScreenLOCK = new Object();
-        
+        public Object GameScreenLOCK = new Object();
+        public Object PreviewScreenLOCK = new Object();
 
+        public Action<int, int> MakeMove { get; set; }
+        public Action<Rectangle> SaveGameExtents { get; set; }
 
         public Bitmap GameScreen; // Holds the captured area bitmap for each iteration
         private Rectangle ScreenRectangle;
@@ -67,6 +68,12 @@ namespace BBot.GameEngine
 
             tickTimer = new Timer(new TimerCallback(GameTick), null, 0, TickPeriod);
             cancellationTokenSource = new CancellationTokenSource();
+
+            if (GameScreen == null)
+                CaptureArea();
+
+            UpdatePreview();
+
         }
 
         public void Stop()
@@ -93,6 +100,7 @@ namespace BBot.GameEngine
         }
 
         public Action<String> DebugAction { get; set; }
+        public Action<BBot.GameDefinitions.FindBitmapWorker.ImageSearchDetails> ImageDebugAction { get; set; }
         
         public Rectangle SuggestedSearchArea
         {
@@ -142,6 +150,9 @@ namespace BBot.GameEngine
 
             SuggestedSearchArea = newSearchRectangle;
             GameExtents = null;
+
+            CaptureArea();
+            UpdatePreview();
         }
 
         /// <summary>
@@ -166,12 +177,8 @@ namespace BBot.GameEngine
 
             GameExtents = new Rectangle(newGameLocation, GameSize);
 
-            // Write game location to config file
-            /*Properties.Settings.Default.GameExtents = newGameLocation;
-            Properties.Settings.Default.GameSize = GameSize;
-
-            Properties.Settings.Default.Save();
-            */
+            SaveGameExtents(GameExtents.Value);
+           
             // Set suggested search area to found game extents (adds on a buffer)
             SuggestedSearchArea = GameExtents.Value;
         }
@@ -221,10 +228,26 @@ namespace BBot.GameEngine
             return true;
         }
 
+        private void UpdatePreview()
+        {
+            if (Monitor.TryEnter(PreviewScreenLOCK))
+            {
+                try
+                {
+                    PreviewScreen = GameScreen.Clone(new Rectangle(0, 0, GameScreen.Width, GameScreen.Height), GameScreen.PixelFormat);
+                }
+                finally
+                {
+                    Monitor.Exit(PreviewScreenLOCK);
+                }
+            }
+            
+        }
+
         public void Dispose()
         {
             Stop();
-
+            
             // free managed resources
             if (GameScreen != null)
             {

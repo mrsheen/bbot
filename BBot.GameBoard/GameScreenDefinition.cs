@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Reflection;
 using System.IO;
+using System.Threading;
 
 namespace BBot.GameDefinitions
 {
@@ -19,13 +20,17 @@ namespace BBot.GameDefinitions
 
         private FindBitmapWorker findBitmapWorker;
 
-        public GameScreenDefinition()
+        public GameScreenDefinition(CancellationToken cancellationToken)
         {
-            findBitmapWorker = new FindBitmapWorker();
+            findBitmapWorker = new FindBitmapWorker(cancellationToken);
         }
+
+        public Action<BBot.GameDefinitions.FindBitmapWorker.ImageSearchDetails> ImageDebugAction { get; set; }
 
         public MatchingPoint FindGameScreenInImage(Bitmap imageToSearch, bool quickCheck = false)
         {
+            findBitmapWorker.ImageDebugAction = this.ImageDebugAction;
+
             SearchParams search = new SearchParams();
             MatchingPoint match = new MatchingPoint();
 
@@ -35,7 +40,7 @@ namespace BBot.GameDefinitions
                 search.QuickCheck = quickCheck;
 
                 //Get image to find and mask(if available)
-                search.ToFind = GetBitmapByType(StateBitmapType.RawImage);
+                search.ToFind = GetBitmapByType(StateBitmapType.RawImage,null,imageToSearch.PixelFormat);
                 
                 //Do search
                 if (FindUsingMasks(search, ref match))
@@ -68,9 +73,6 @@ namespace BBot.GameDefinitions
             Stack<StateBitmapType> typesToCheck = new Stack<StateBitmapType>();
             typesToCheck.Push(StateBitmapType.Blue);
             typesToCheck.Push(StateBitmapType.Mask);
-#if DEBUG
-            typesToCheck.Clear(); // Only check smartmask in debug
-#endif
             typesToCheck.Push(StateBitmapType.SmartMask);
 
 
@@ -198,17 +200,19 @@ namespace BBot.GameDefinitions
 
         private static Bitmap GetBitmap(string assetName, Size? size, PixelFormat? format)
         {
-            String fullAssetName =  String.Format("BBot.Assets.{0}.bmp", assetName);
+            String fullAssetName =  String.Format("BBot.GameDefinitions.Assets.{0}.bmp", assetName);
             String[] assetNames = Assembly.GetExecutingAssembly().GetManifestResourceNames();
 
             if (!assetNames.Contains(fullAssetName))
                 return null; // Asset not found, return null
 
+            Bitmap returnBitmap;
+
             Stream ImageAsset = Assembly.GetExecutingAssembly().GetManifestResourceStream(fullAssetName);
             using (Bitmap assetBitmap = (Bitmap)Bitmap.FromStream(ImageAsset))
             {
                 if (!size.HasValue && !format.HasValue)
-                    return assetBitmap; // No need to reformat, return raw asset
+                    returnBitmap = assetBitmap.CloneExact();
 
                 // Copy asset to correct size and format (this will add buffer of black pixels if required)
                 using (Bitmap resizedAssetBitmap = new Bitmap(size.HasValue ? size.Value.Width : assetBitmap.Width,
@@ -220,9 +224,11 @@ namespace BBot.GameDefinitions
                     {
                         g.DrawImage(assetBitmap, 0, 0, assetBitmap.Width, assetBitmap.Height);
                     }
-                    return resizedAssetBitmap;
+                    returnBitmap = resizedAssetBitmap.CloneExact();
                 }
             }
+
+            return returnBitmap;
         }
 
     }

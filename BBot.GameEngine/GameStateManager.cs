@@ -44,6 +44,8 @@ namespace BBot.GameEngine
 
             while (states.Count > 0)
                 states.Pop().Cleanup();
+
+            ctsRunState = new CancellationTokenSource();
         }
 
         public void ChangeState(BaseGameState newState)

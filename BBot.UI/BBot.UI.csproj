@@ -62,6 +62,7 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SendInput.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="WIN32.cs" />
     <EmbeddedResource Include="CaptureForm.resx">
@@ -91,6 +92,10 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\BBot.GameBoard\BBot.GameDefinitions.csproj">
+      <Project>{ECD13940-4916-4245-B22B-7C04E4D25C6F}</Project>
+      <Name>BBot.GameDefinitions</Name>
+    </ProjectReference>
     <ProjectReference Include="..\BBot.GameEngine\BBot.GameEngine.csproj">
       <Project>{7E0FADB2-C280-44D8-978A-F4BCB8126424}</Project>
       <Name>BBot.GameEngine</Name>

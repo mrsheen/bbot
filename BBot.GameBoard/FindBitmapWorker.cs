@@ -4,14 +4,30 @@ using System.Text;
 using System.Drawing;
 using AForge.Imaging.Filters;
 using AForge.Imaging;
+using System.Threading;
 
 namespace BBot.GameDefinitions
 {
+    public static class BitmapExtensions
+    {
+        public static Bitmap CloneExact(this Bitmap bitmap)
+        {
+            return bitmap.Clone(new Rectangle(0, 0, bitmap.Width, bitmap.Height), bitmap.PixelFormat);
+        }
+    }
+
     public class FindBitmapWorker
     {
         private const bool Debug = true;
 
-        public bool StopRequested = false;
+        public Action<ImageSearchDetails> ImageDebugAction { get; set; }
+
+        private CancellationToken cancellationToken;
+
+        public FindBitmapWorker(CancellationToken token)
+        {
+            cancellationToken = token;
+        }
 
         public struct ImageSearchDetails
         {
@@ -30,10 +46,6 @@ namespace BBot.GameDefinitions
 
         }
 
-
-        public delegate void ImageSearchDelegate(ImageSearchDetails details);
-        public event ImageSearchDelegate ImageSearchEvent;
-
         public void UpdateCertainty(int searchCertainty, int minimumValue, int maxValue)
         {
             double minPercentMark = 10D;
@@ -50,8 +62,10 @@ namespace BBot.GameDefinitions
             details.thresholdValue = minPercentMark;
             details.type = ImageSearchDetailsType.MatchCertainty;
 
-            if (ImageSearchEvent != null)
-                ImageSearchEvent(details);
+            if (cancellationToken.IsCancellationRequested)
+                throw new OperationCanceledException();
+
+            ImageDebugAction(details);
         }
 
         public void UpdateDelta(double seachDelta)
@@ -66,8 +80,11 @@ namespace BBot.GameDefinitions
             details.thresholdValue = 10;
             details.type = ImageSearchDetailsType.CertaintyDelta;
 
-            if (ImageSearchEvent != null)
-                ImageSearchEvent(details);
+            if (cancellationToken.IsCancellationRequested)
+                throw new OperationCanceledException();
+
+
+            ImageDebugAction(details);
         }
 
         public MatchingPoint FindInScreen(Bitmap bmpSource, Bitmap bmpToFind, Bitmap bmpMask, bool bQuickCheck, int minimumConfidence = int.MaxValue)
@@ -100,8 +117,8 @@ namespace BBot.GameDefinitions
             // Otherwise check each successive zoom
             foreach (int scale in new int[] { 10, 4, 2, 1 })
             {
-                if (StopRequested)
-                    return match;
+                if (cancellationToken.IsCancellationRequested)
+                    throw new OperationCanceledException();
 
                 scaleFactor = 1d / scale;
                 // Resize both images to (1 / scale)%
@@ -124,8 +141,8 @@ namespace BBot.GameDefinitions
                 // Find best match at 25%
                 //[x,y] = findwindow2(fullscreen2,gametitle2,x,y,xn,yn,3);
                 match = FindSingleChannelImaging(bmpSourceScaled, bmpToFindScaled, bmpMaskScaled, match, xN, yN, step, scale, bQuickCheck);
-                if (StopRequested)
-                    return match;
+                if (cancellationToken.IsCancellationRequested)
+                    throw new OperationCanceledException();
                 if (bQuickCheck && match.MaxCertaintyDelta < 10)
                     return match; // Bail out, could not find
 
@@ -231,8 +248,8 @@ namespace BBot.GameDefinitions
                     }
                     //    break;
 
-                    if (StopRequested)
-                        return match;
+                    if (cancellationToken.IsCancellationRequested)
+                        throw new OperationCanceledException();
                     
                     Bitmap bmpSearchArea = bmpSource.Clone(new Rectangle(x, y, bmpToFind.Width, bmpToFind.Height), bmpToFind.PixelFormat);
 

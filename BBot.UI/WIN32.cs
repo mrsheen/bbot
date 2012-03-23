@@ -116,37 +116,5 @@ namespace BBot.UI
             Windows = 8
         }
 
-        // Capture the entire desktop as a bitmap
-        public static Bitmap GetDesktop()
-        {
-            int screenX;
-            int screenY;
-            IntPtr hBmp;
-            IntPtr hdcScreen = GetDC(GetDesktopWindow());
-            IntPtr hdcCompatible = CreateCompatibleDC(hdcScreen);
-
-            screenX = GetSystemMetrics(0);
-            screenY = GetSystemMetrics(1);
-            hBmp = CreateCompatibleBitmap(hdcScreen, screenX, screenY);
-
-            if (hBmp != IntPtr.Zero)
-            {
-                IntPtr hOldBmp = (IntPtr)SelectObject(hdcCompatible, hBmp);
-                BitBlt(hdcCompatible, 0, 0, screenX, screenY, hdcScreen, 0, 0, 13369376);
-
-                SelectObject(hdcCompatible, hOldBmp);
-                DeleteDC(hdcCompatible);
-                ReleaseDC(GetDesktopWindow(), hdcScreen);
-
-                Bitmap bmp = System.Drawing.Image.FromHbitmap(hBmp);
-
-                DeleteObject(hBmp);
-                GC.Collect();
-
-                return bmp;
-            }
-
-            return null;
-        }
     }
 }

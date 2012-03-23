@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
 using System.Threading;
+using BBot.GameDefinitions;
 
 
 namespace BBot.GameEngine.States
@@ -42,51 +43,49 @@ namespace BBot.GameEngine.States
                 findStates.Clear(); // need to empty this, it fills up from multiple Update(CancellationToken cancelToken) calls
                 return; // Only every five seconds
             }
-            gameEngine.DebugAction("Looking for menus from within unknown state");
+            
             checkCount++;
 
-            /*
+            
             MatchingPoint match;
 
             findStates.Push(this);
 
-            game.DebugAction("Looking for states from " + this.AssetName);
-            game.DebugAction("Other states: " + findStates.Count);
+            gameEngine.DebugAction("Looking for states from " + this.Name);
+            gameEngine.DebugAction("Other states: " + findStates.Count);
             
 
             while (findStates.Count > 0)
             {
                 BaseGameState state = findStates.Pop();
                 if (state != this)
-                    state.Init(game);
+                    state.Init(gameEngine);
                 //Look for different state (first time check exact only)
-                match = state.FindStateFromScreen(checkCount >= DeepSearch || state.AssetName.Equals(this.AssetName));
+                match = state.TryFindState(checkCount >= DeepSearch || state.Name.Equals(this.Name));
                 if (match.Confident)
                 {
                     // Check for this menu
-                    if (this.AssetName.Equals(state.AssetName))
+                    if (this.Name.Equals(state.Name))
                     {
                         // Click 'yes' button to confirm restart
-                        //SendInputClass.Click(
-                            //game.GameExtents.Value.X + transitionClickOffset.X,
-                            //game.GameExtents.Value.Y + transitionClickOffset.Y);
+                        gameEngine.MakeMove(
+                            gameEngine.GameExtents.Value.X + transitionClickOffset.X,
+                            gameEngine.GameExtents.Value.Y + transitionClickOffset.Y);
                         System.Threading.Thread.Sleep(400);
-                        //SendInputClass.Move(0, 0);
                         // Assume next state
-                        game.EventStack.Push(new GameEvent(EngineEventType.CHANGE_MENU, transitionState));
-                        game.StateManager.ChangeState((BaseGameState)myEvent.parameters);
+                        gameEngine.StateManager.ChangeState(transitionState);
                         return;
                     }
 
                     // Started playing
-                    game.EventStack.Push(new GameEvent(EngineEventType.CHANGE_MENU, state));
-                    game.DebugAction("MenuState found: " + state.AssetName);
+                    gameEngine.StateManager.ChangeState(state);
+                    gameEngine.DebugAction("MenuState found: " + state.Name);
                     return;
                 }
 
             }
 
-
+            /*
             PlayingState playingState = new PlayingState();
             playingState.Init(game);
             match = playingState.FindStateFromScreen(true);

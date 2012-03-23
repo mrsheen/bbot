@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Drawing;
+using System.Threading;
 
 namespace BBot.GameDefinitions
 {
@@ -10,6 +11,19 @@ namespace BBot.GameDefinitions
     [Serializable()]
     public class BoardDefinition
     {
+        private struct BoardMove
+        { // stores the grid location of the moves
+            public Point FirstPiece { get; set; }
+            public Point SecondPiece { get; private set; }
+            public MoveDirection Direction
+            {
+                set
+                {
+
+                }
+            }
+        }
+
         public readonly Size BoardSize = new Size(320, 320); // The size of the Bejeweled gem grid (in pixels, GridSize * CellSize)
         public readonly int CellSize = 40; // Size of each cell in the grid (in pixels)
         public readonly int GridSize = 8; // Size of grid (number of rows/columns)
@@ -44,9 +58,9 @@ namespace BBot.GameDefinitions
             for the current board. Also, find best possible move. This will make a best-guess effort to sort valid moves by likelihood to produce
             large chains or multiple matches.
         */
-        public void GetValidMovesFromBoard()
+        public List<GameScreenMove> GetValidMovesFromBoard(CancellationToken cancellationToken)
         {
-
+            return new List<GameScreenMove>();
         }
 
         /*
@@ -487,4 +501,27 @@ namespace BBot.GameDefinitions
 
 
     }
+
+    public enum MoveDirection
+    {
+        North,
+        South,
+        East,
+        West
+    }
+
+
+    public struct GameScreenMove
+    { // stores the pixel location of the moves
+        public Point FirstPiece { get; set; }
+        public Point SecondPiece { get; private set; }
+        public MoveDirection Direction
+        {
+            set
+            {
+
+            }
+        }
+    }
+
 }

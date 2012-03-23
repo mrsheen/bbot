@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace BBot.Properties {
+namespace BBot.UI.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
@@ -26,12 +26,12 @@ namespace BBot.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0, 0")]
-        public global::System.Drawing.Point GameExtents {
+        public global::System.Drawing.Point GameLocation {
             get {
-                return ((global::System.Drawing.Point)(this["GameExtents"]));
+                return ((global::System.Drawing.Point)(this["GameLocation"]));
             }
             set {
-                this["GameExtents"] = value;
+                this["GameLocation"] = value;
             }
         }
         

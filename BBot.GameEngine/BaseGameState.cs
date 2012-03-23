@@ -17,11 +17,13 @@ namespace BBot.GameEngine.States
         internal BBotGameEngine gameEngine;
         internal GameScreenDefinition gameScreen;
 
+        private CancellationTokenSource ctsFindGamescreen = new CancellationTokenSource();
+
         public string Name;
 
         public BaseGameState()
         {
-            gameScreen = new GameScreenDefinition();
+            gameScreen = new GameScreenDefinition(ctsFindGamescreen.Token);
             gameScreen.AssetName =  "-none-";
             gameScreen.MinimumConfidence =  1;
 
@@ -31,7 +33,7 @@ namespace BBot.GameEngine.States
         public virtual void Init(BBotGameEngine gameRef)
         {
             gameEngine = gameRef;
-
+            gameScreen.ImageDebugAction = gameEngine.ImageDebugAction;
         }
 
 
@@ -54,12 +56,19 @@ namespace BBot.GameEngine.States
 
         public void Run(CancellationToken cancelToken)
         {
-           
-            if (!gameEngine.GameExtents.HasValue)
-                return;
+            cancelToken.Register(() => ctsFindGamescreen.Cancel());
+
 
             try
             {
+                if (!gameEngine.GameExtents.HasValue)
+                {
+                    using (Bitmap screenSearchArea = GetSearchAreaBitmap())
+                    {
+                        TryFindState();
+                    }
+                }
+
                 this.Update(cancelToken);
                 this.Draw(cancelToken);
             }
@@ -76,15 +85,18 @@ namespace BBot.GameEngine.States
 
         private Thread FindThread;
 
-        private void TryFindState()
+        public MatchingPoint TryFindState(bool quickSearch = false)
         {
+            MatchingPoint match;
+            using (Bitmap screenSearchArea = GetSearchAreaBitmap())
+            {
 
-            //FindStateFromScreen(false);
+                match = gameScreen.FindGameScreenInImage(screenSearchArea, quickSearch);
+                if (match.Confident)
+                    gameEngine.UpdateGameExtents(match.X, match.Y);
+            }
 
-            if (!gameEngine.GameExtents.HasValue)
-                gameEngine.StateManager.PopState();
-
-            return;
+            return match;
         }
 
 
@@ -109,14 +121,6 @@ namespace BBot.GameEngine.States
                 }
             }
             
-            if (!gameEngine.GameExtents.HasValue)
-            {// Add buffer to given search area
-                searchLocation.X += 20;
-                searchLocation.Y += 20;
-                searchLocation.Width += 40;
-                searchLocation.Height += 40;                
-            }
-
             // Copy gamescreen to search area (this will add buffer of black pixels if required
             Bitmap searchArea = new Bitmap(searchLocation.Width,searchLocation.Height, PixelFormat.Format32bppArgb);
 

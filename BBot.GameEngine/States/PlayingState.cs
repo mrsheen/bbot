@@ -10,6 +10,9 @@ namespace BBot.GameEngine.States
     public class PlayingState : BaseGameState
     {
         Point pauseClickOffset = new Point(0,0);
+        BoardDefinition currentBoard = new BoardDefinition();
+
+        Timer timer;
 
         public PlayingState()
         {
@@ -18,132 +21,94 @@ namespace BBot.GameEngine.States
             gameScreen.AssetName =  "wholegame.playing";
             gameScreen.MinimumConfidence =  200000;
 
-            /*listGemColorStats = GemDefinitions.GetGemDefinitions();
-            delay = new int[GridSize + 6, GridSize + 6];
+            /*
+            
             bmpHeatmap = new Bitmap(BoardSize.Width, BoardSize.Height);
-            bHuzzah = false;
 
             */
 
             pauseClickOffset.X = 90;
             pauseClickOffset.Y = 390;
             
+
+
         }
 
         //!TODO!Fill out pause/resume for ticker
-        public override void Cleanup() {
-            /*
+        public override void Cleanup()
+        {
             if (timer != null)
             {
                 timer.Change(Timeout.Infinite, Timeout.Infinite);
                 timer.Dispose();
             }
-            if (!bHuzzah)
-            {
-                Pause();
-            }*/
 
         }
-        //!TODO!Fill out pause/resume for ticker
+
         public override void Pause() {
-            //SendInputClass.Click(
-                           //game.GameExtents.Value.X + pauseClickOffset.X,
-                           //game.GameExtents.Value.Y + pauseClickOffset.Y);
+            gameEngine.DebugAction("Game paused");
+            gameEngine.MakeMove(
+                        gameEngine.GameExtents.Value.X + pauseClickOffset.X,
+                        gameEngine.GameExtents.Value.Y + pauseClickOffset.Y);
             System.Threading.Thread.Sleep(200);
         }
 
-        //public override void Resume() { }
-        /*
-        public override bool HandleEvents()
+
+        public override void Update(CancellationToken cancelToken)
         {
-            
-            if (base.HandleEvents() || bHuzzah)
-                return true;
+            if (cancelToken.IsCancellationRequested)
+            {
+                Pause();
+                throw new OperationCanceledException();
+            }
 
             if (timer == null)
             {
                 Thread.Sleep(500);
-                timer = new Timer(new TimerCallback(GameOver), game, 66 * 1000, Timeout.Infinite);
+                timer = new Timer(new TimerCallback(GameOver), null, 60 * 1000, Timeout.Infinite);
             }
-            
-            return false;
-            
-        }*/
 
-        public override void Update(CancellationToken cancelToken)
-        {
-            /*
-            if (bHuzzah)
-                return;
-
-            
-
-            GetBoardFromGame(game);
-
-            if (!bContinue)
-                return;
-
-            if (ScanGrid())
+            if (Monitor.TryEnter(gameEngine.GameScreenLOCK,20))
             {
-                System.Diagnostics.Debugger.Break();
-                DoMoves(game);
+                try 
+                {
+                    using (Bitmap bmpBoard = gameEngine.GameScreen.CloneExact())
+                    {
+                        currentBoard.GetBoardFromImage(bmpBoard);
+                    }
+                }
+                finally 
+                {
+                    Monitor.Exit(gameEngine.GameScreenLOCK);
+                }
+            }
 
-            }*/
 
+            foreach (GameScreenMove move in currentBoard.GetValidMovesFromBoard(cancelToken))
+            {// for each move
+                // do move
+                gameEngine.MakeMove(move.FirstPiece.X + gameEngine.GameExtents.Value.X, move.FirstPiece.Y + gameEngine.GameExtents.Value.Y);
+                gameEngine.MakeMove(move.SecondPiece.X + gameEngine.GameExtents.Value.X, move.SecondPiece.Y + gameEngine.GameExtents.Value.Y);
+            }
         }
 
         public override void Draw(CancellationToken cancelToken)
         {
-            TickDownDelay(gameEngine);
-
-
-            
-            
+            //TickDownDelay(gameEngine);
 
         }
 
-        #region Private fields
-
-        #endregion
-
-        #region Private Methods
-
-        private void GameOver(Object state)
+        private void GameOver(Object obj)
         {
-            //SendInputClass.Move(0, 0);
-            BBotGameEngine game = (BBotGameEngine)state;
-            //bHuzzah = true;
+            gameEngine.DebugAction("Game Over! Waiting for Last Hurrah . . .");
+            
             Thread.Sleep(10 * 1000);
-            game.StateManager.ChangeState(new StarState());
+
+            gameEngine.DebugAction("Hurrah!");
+            gameEngine.StateManager.ChangeState(new StarState());
         }
 
-
-        private void GetBoardFromGame(BBotGameEngine game)
-        {
-            /*
-            bContinue = false;
-            if (Monitor.TryEnter(game.GameScreenLOCK,20))
-            {
-                try {
-                     bmpBoard = game.GameScreen.Clone(new Rectangle(BoardLocationOnGame, BoardSize), game.GameScreen.PixelFormat);
-                     if (game.GameScreen == null || bmpBoard == null)
-                         return;
-                     bContinue = true;
-                }
-                finally 
-                {
-                    Monitor.Exit(game.GameScreenLOCK);
-                }
-            }*/
-        }
- 
-
-        // Check if two colours match
-        private bool MatchColours(Gem a, Gem b)
-        {
-            return (a.Equals(b));
-
-        }
+        /*
 
         private DateTime heatmapTimestamp = DateTime.Now;
         private DateTime delayTimestamp = DateTime.Now;
@@ -153,7 +118,7 @@ namespace BBot.GameEngine.States
             int iX;
             int iY;
             byte bIntense;
-            /*
+            
             float fRatio = 1F / MAX_DELAY;
             Heatmap.ClearHeatpoints();
             // Tick for each delay
@@ -171,10 +136,10 @@ namespace BBot.GameEngine.States
                     // Add heat point to heat points list
                     Heatmap.AddHeatpoint(new Heatmap.HeatPoint(iX, iY, bIntense));
                 }
-            }*/
+            }
 
             delayTimestamp = DateTime.Now;
-            /*
+            
             Bitmap bmpNewPreview = BoardDefinition.GenerateBoardImage(Board);
             //bmpNewPreview = GenerateHeatmap(game, bmpNewPreview);
 
@@ -189,11 +154,9 @@ namespace BBot.GameEngine.States
                 {
                     Monitor.Exit(game.PreviewScreenLOCK);
                 }
-            }*/
+            }
         }
-
-
-        /*
+   
 
 
         private bool CheckDelay(int x, int y)
@@ -233,8 +196,7 @@ namespace BBot.GameEngine.States
 
         }*/
 
-
-        #endregion
+    
 
     }
 }

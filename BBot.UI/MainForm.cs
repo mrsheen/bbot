@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading;
 using BBot.GameEngine;
 using BBot.GameEngine.States;
+using BBot.GameDefinitions;
 
 namespace BBot.UI
 {
@@ -48,6 +49,10 @@ namespace BBot.UI
 #endif
             gameEngine.DebugMode = debugMode;
             gameEngine.DebugAction = new Action<string>(UpdateDebug);
+            gameEngine.ImageDebugAction = new Action<FindBitmapWorker.ImageSearchDetails>(plotValue);
+
+            gameEngine.SaveGameExtents = new Action<Rectangle>(SaveGameExtents);
+
 
             playButton.Enabled = true;
             playButton.Text = "Start";
@@ -57,11 +62,11 @@ namespace BBot.UI
             tUpdateDisplay.Start();
 
         }
-        
+
         private void StartGame()
         {
             if (gameEngine == null)
-                InitGameEngine(Screen.PrimaryScreen.Bounds);
+                InitGameEngine(LoadGameExtents());
 
             if (selectedState != null)
             {
@@ -76,6 +81,8 @@ namespace BBot.UI
                 }
             }
 
+            gameEngine.MakeMove = new Action<int, int>(MakeMove);
+
             gameEngine.Start();
 
             playButton.Enabled = false;
@@ -87,10 +94,15 @@ namespace BBot.UI
 
         private void StopGame()
         {
+            
+
             tUpdateDisplay.Stop();
 
             if (gameEngine != null)
                 gameEngine.Stop();
+
+            // Be sure to clear move handler AFTER stopping, to allow for gameengine to pause game
+            gameEngine.MakeMove = null;
 
             playButton.Enabled = true;
             playButton.Text = "Start";
@@ -102,7 +114,8 @@ namespace BBot.UI
         {
             if (gameEngine != null)
             {
-                gameEngine.Stop();
+                StopGame();
+                
                 gameEngine.Dispose();
             }
 
@@ -111,12 +124,40 @@ namespace BBot.UI
         }
 
 
+        private void MakeMove(int x, int y)
+        {
+            SendInputClass.Click(x,y);
+        }
 
+        private Rectangle LoadGameExtents() {
+            Rectangle gameExtents = new Rectangle();
+
+            // Load game extents from file
+            gameExtents.Location = Properties.Settings.Default.GameLocation;
+            gameExtents.Size = Properties.Settings.Default.GameSize;
+
+            if (gameExtents.Size.Width == 0 || gameExtents.Size.Height == 0)
+                gameExtents = Screen.PrimaryScreen.Bounds;
+
+            return gameExtents;
+    }
+
+        private void SaveGameExtents(Rectangle gameExtents)
+        {
+            // Write game location to config file
+            Properties.Settings.Default.GameLocation = gameExtents.Location;
+            Properties.Settings.Default.GameSize = gameExtents.Size;
+
+            Properties.Settings.Default.Save();
+            
+        }
 
         private readonly object PlotDetailsLOCK = new Object();
         private DateTime imageSnapshotTimestamp = DateTime.Now;
         private void UpdateDisplay_tick(object sender, EventArgs e)
         {
+            if (!tUpdateDisplay.Enabled)
+                return;
             /*
             lock (PlotDetailsLOCK)
             {
@@ -129,54 +170,54 @@ namespace BBot.UI
 
 
             }*/
-            
+
             if ((DateTime.Now - imageSnapshotTimestamp).Seconds < 1)
                 return; // Only update image every 1 second
 
-            Bitmap newImage = new Bitmap(1, 1);
-            /*
+
             if (Monitor.TryEnter(gameEngine.PreviewScreenLOCK))
             {
                 try
                 {
                     if (gameEngine.PreviewScreen != null)
-                        newImage = gameEngine.PreviewScreen.Clone(new Rectangle(0, 0, gameEngine.PreviewScreen.Width, gameEngine.PreviewScreen.Height), gameEngine.PreviewScreen.PixelFormat);
+                    {
+                        using (Bitmap newImage = gameEngine.PreviewScreen.Clone(new Rectangle(0, 0, gameEngine.PreviewScreen.Width, gameEngine.PreviewScreen.Height), gameEngine.PreviewScreen.PixelFormat))
+                        {
+                            // resize and show
+
+                            // Prevent using images internal thumbnail
+                            newImage.RotateFlip(System.Drawing.RotateFlipType.Rotate180FlipNone);
+                            newImage.RotateFlip(System.Drawing.RotateFlipType.Rotate180FlipNone);
+
+                            int newWidth = preview.Width;
+
+                            if (newImage.Width <= newWidth)
+                            {
+                                newWidth = newImage.Width;
+                            }
+
+                            int newHeight = newImage.Height * newWidth / newImage.Width;
+                            if (newHeight > preview.Height)
+                            {
+                                // Resize with height instead
+                                newWidth = newImage.Width * preview.Height / newImage.Height;
+                                newHeight = preview.Height;
+                            }
+
+                            using (Bitmap resizedImage = (Bitmap)newImage.GetThumbnailImage(newWidth, newHeight, null, IntPtr.Zero))
+                            {
+                                preview.Image = resizedImage.Clone(new Rectangle(0, 0, resizedImage.Width, resizedImage.Height), resizedImage.PixelFormat);
+                            }
+
+                            imageSnapshotTimestamp = DateTime.Now;
+                            // Clear handle to original file so that we can overwrite it if necessary
+                        }
+                    }
                 }
                 finally
                 {
                     Monitor.Exit(gameEngine.PreviewScreenLOCK);
                 }
-            }*/
-
-            if (newImage.Width != 1)
-            { // resize and show
-
-                // Prevent using images internal thumbnail
-                newImage.RotateFlip(System.Drawing.RotateFlipType.Rotate180FlipNone);
-                newImage.RotateFlip(System.Drawing.RotateFlipType.Rotate180FlipNone);
-
-                int newWidth = preview.Width;
-
-                if (newImage.Width <= newWidth)
-                {
-                    newWidth = newImage.Width;
-                }
-
-                int newHeight = newImage.Height * newWidth / newImage.Width;
-                if (newHeight > preview.Height)
-                {
-                    // Resize with height instead
-                    newWidth = newImage.Width * preview.Height / newImage.Height;
-                    newHeight = preview.Height;
-                }
-
-                Image resizedImage = newImage.GetThumbnailImage(newWidth, newHeight, null, IntPtr.Zero);
-
-                preview.Image = resizedImage;
-
-                imageSnapshotTimestamp = DateTime.Now;
-                // Clear handle to original file so that we can overwrite it if necessary
-                newImage.Dispose();
             }
         }
 
@@ -195,16 +236,8 @@ namespace BBot.UI
             }
         }
 
-        /*
-        private List<FindBitmapWorker.ImageSearchDetails> detailsWaiting = new List<FindBitmapWorker.ImageSearchDetails>();
-        private void ImageSearch(FindBitmapWorker.ImageSearchDetails details)
-        {
-            lock (PlotDetailsLOCK)
-            {
-                detailsWaiting.Add(details);
-            }
-        }*/
-        /*
+
+
         private Dictionary<FindBitmapWorker.ImageSearchDetailsType, int> counts = new Dictionary<FindBitmapWorker.ImageSearchDetailsType, int>();
         private void plotValue(FindBitmapWorker.ImageSearchDetails details)
         {
@@ -220,16 +253,17 @@ namespace BBot.UI
 
                 using (Graphics g = Graphics.FromHwnd(pictureBox1.Handle))
                 {
-                    SolidBrush brush = new SolidBrush(Color.White);
-                    if (details.type.Equals(FindBitmapWorker.ImageSearchDetailsType.MatchCertainty))
-                        g.FillRectangle(brush, new Rectangle(counts[details.type] - 1, 0, 5, pictureBox1.Height));
+                    using (SolidBrush brush = new SolidBrush(Color.White))
+                    {
+                        if (details.type.Equals(FindBitmapWorker.ImageSearchDetailsType.MatchCertainty))
+                            g.FillRectangle(brush, new Rectangle(counts[details.type] - 1, 0, 5, pictureBox1.Height));
 
-                    brush.Color = GetColor(details);
-                    g.FillRectangle(brush, new Rectangle(counts[details.type] - 1, pictureBox1.Height - GetAdjustedValue(details.currentValue) - 1, 2, 2));
+                        brush.Color = GetColor(details);
+                        g.FillRectangle(brush, new Rectangle(counts[details.type] - 1, pictureBox1.Height - GetAdjustedValue(details.currentValue) - 1, 2, 2));
 
-                    brush.Color = Color.Red;
-                    g.FillRectangle(brush, new Rectangle(counts[details.type] - 1, pictureBox1.Height - GetAdjustedValue(details.thresholdValue), 1, 1));
-
+                        brush.Color = Color.Red;
+                        g.FillRectangle(brush, new Rectangle(counts[details.type] - 1, pictureBox1.Height - GetAdjustedValue(details.thresholdValue), 1, 1));
+                    }
                 }
 
                 counts[details.type]++;
@@ -241,12 +275,12 @@ namespace BBot.UI
             }
 
         }
-        */
+
         private int GetAdjustedValue(double currentValue)
         {
             return (int)(currentValue * pictureBox1.Height / 100D);
         }
-        /*
+
         private Color GetColor(FindBitmapWorker.ImageSearchDetails details)
         {
             switch (details.type)
@@ -261,7 +295,11 @@ namespace BBot.UI
                     return Color.Blue;
             }
         }
-        */
+
+        private void Close(Object obj)
+        {
+            this.BeginInvoke(new Action(Close));
+        }
 
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
@@ -269,6 +307,9 @@ namespace BBot.UI
             // Kill the system-wide hotkey on app exit
             WIN32.UnregisterHotKey(Handle, 100);
             DisposeGameEngine();
+
+            // Clear the message queue if workers have UI updates pending
+            Application.DoEvents();
         }
 
         // Set up hotkeys: we need one to be able to quit the loop because 
@@ -292,7 +333,7 @@ namespace BBot.UI
         {
             StartGame();
         }
-        
+
 
         public Dictionary<string, Type> states = new Dictionary<string, Type>();
 
@@ -335,10 +376,6 @@ namespace BBot.UI
         {
             foreach (Screen screen in Screen.AllScreens)
             {
-#if DEBUG
-                if (screen.Primary) // DEBUG
-                    continue;
-#endif
                 CaptureForm cf = new CaptureForm();
                 cf.StartPosition = FormStartPosition.Manual;
                 cf.Bounds = screen.Bounds;
@@ -387,7 +424,7 @@ namespace BBot.UI
                 gameEngine.UpdateSuggestedSearch(searchArea, true);
                 gameEngine.CaptureArea();
 
-                UpdateDebug(String.Format("Updated game search area, press '{0}' to begin",playButton.Text));
+                UpdateDebug(String.Format("Updated game search area, press '{0}' to begin", playButton.Text));
 
             }
         }
